@@ -1,0 +1,67 @@
+# dependencies (bun install)
+node_modules
+
+# output
+out
+dist
+*.tgz
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# example build artifacts
+examples/**
+!examples/*.sh
+!examples/**/
+!examples/**/*.adg
+!examples/**/*.bte
+!examples/**/test*.sh
+!examples/**/test_config.json
+!examples/*.json
+
+temp/**
+!temp/*.adg
+
+lib/*.asm
+lib/*.o
+lib/*.ll
+
+.adg-cache
+adgLang
+
+ir.ll
+tests/ir.ll
+*.dump
+/tmp
+
+**/views/**/*.adg
+
+# Runtime build artifacts
+lib/*.o
+lib/*.a
+lib/*.so
+lib/*.bc
