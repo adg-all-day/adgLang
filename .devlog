@@ -1,3 +1,4 @@
 # adgLang dev log
 
 - scaffold compiler entry and base AST node types
+- draft initial grammar for literals and identifiers
