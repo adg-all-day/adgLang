@@ -2,3 +2,4 @@
 
 - scaffold compiler entry and base AST node types
 - draft initial grammar for literals and identifiers
+- add tokenizer skeleton with position tracking
