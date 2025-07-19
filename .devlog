@@ -5,3 +5,4 @@
 - add tokenizer skeleton with position tracking
 - wire pratt parser for binary expressions
 - support let-bindings and block scopes in parser
+- implement tree-walking interpreter for arithmetic
