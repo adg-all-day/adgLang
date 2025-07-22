@@ -6,3 +6,4 @@
 - wire pratt parser for binary expressions
 - support let-bindings and block scopes in parser
 - implement tree-walking interpreter for arithmetic
+- add string interpolation lexer states
