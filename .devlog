@@ -7,3 +7,4 @@
 - support let-bindings and block scopes in parser
 - implement tree-walking interpreter for arithmetic
 - add string interpolation lexer states
+- fix off-by-one in source span when reporting errors
