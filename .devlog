@@ -9,3 +9,4 @@
 - add string interpolation lexer states
 - fix off-by-one in source span when reporting errors
 - introduce Result type for parser recovery
+- add example: hello.adg and fizzbuzz.adg
