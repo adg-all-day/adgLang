@@ -12,3 +12,4 @@
 - add example: hello.adg and fizzbuzz.adg
 - first pass at function declarations and calls
 - closures capture lexical environment correctly
+- add unit tests for lexer edge cases
