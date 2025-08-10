@@ -1,0 +1,487 @@
+# adgLang Language Specification
+
+This document lays out the syntax, types, and language constructs available in adgLang.
+
+## 1. Syntax Basics
+
+### Comments
+
+- **Single-line comments**: Start with `#` and continue to the end of the line.
+- **Multi-line comments**: Wrapped in `/# ... #/`.
+
+```adgLang
+# This is a single-line comment
+
+/#
+This is a
+multi-line comment
+#/
+```
+
+### Literals
+
+- **String**: `"Hello"`
+- **Interpolated String**: `` `Value: ${x}` ``
+- **Char**: `'c'`
+- **Boolean**: `true`, `false`
+- **Null**: `null`, `nullptr`
+- **Numbers**: `123`, `0xFF`, `3.14`
+
+## 1. Types
+
+### Primitive Types
+
+_Note: The grammar uses `Identifier` for types, which suggests these are provided either by the standard library or as built-ins._
+
+- `int` - signed 64-bit integers
+- `uint` - unsigned 64-bit integers
+- `float` - 64-bit floating-point values
+- `bool` (Boolean: `true`, `false`) - u1 if exists 0/1
+- `char` (Character literals: `'c'`) - unsigned 8-bit values
+- `void` (Empty type)
+- `null` (Null type)
+- `nullptr` - null but compatible with pointers
+
+### Composite Types
+
+- **Pointers**: `*T` (e.g., `*int`, `**int`)
+- **Arrays**: `T[]` or `T[N]` (e.g., `int[]`, `float[4]`)
+- **Tuples**: `(T1, T2, ...)` (e.g., `(int, bool)`)
+- **Functions**: `Func<ReturnType>(ArgType1, ArgType2, ...)` (e.g., `Func<void>(int, int)`)
+- **Generics**: `List<T>`, `Map<K, V>`
+- **Enums**: `enum Name { Variant1, Variant2(Type) }`
+
+## 2. Declarations
+
+### Variables
+
+Variables need to be declared as `local` or `global`.
+
+```adgLang
+local x: int;
+local y: int = 10;
+global MAX: int = 100;
+local (a:int, b:uint) = tuple
+```
+
+### Type Aliases
+
+Use type aliases to give existing types a new name.
+
+```adgLang
+type ID = int;
+type Point2D = (int, int);
+type Callback = Func<void>(int);
+type SortFunc<T> = Func<int>(T, T);
+type IntArr = int[];
+```
+
+### Destructuring
+
+Tuple destructuring is supported.
+
+```adgLang
+local (a: int, b: bool) = getTuple();
+(a,b)=tuple # a and b must be already declared at this point
+(a,b) = (b,a)
+```
+
+### Constants
+
+Use the `const` keyword for immutable variables.
+
+```adgLang
+local const PI: float = 3.14159;
+global const MAX_USERS: int = 100;
+```
+
+`const` also works on function parameters:
+
+```adgLang
+frame process(data: const *int) { ... }
+```
+
+### Scoping
+
+Variables use lexical scoping. A variable declared inside a block `{ ... }` is visible only inside that block and any nested sub-blocks. Inner blocks can shadow names from outer blocks.
+
+```adgLang
+local x: int = 10;
+if (true) {
+    local x: int = 20; # Shadows outer x
+    printf("%d", x); # Prints 20
+}
+printf("%d", x); # Prints 10
+```
+
+## 3. Functions
+
+### Declaration
+
+Functions can be `frame` (stack frame based).
+
+```adgLang
+frame main() ret int {
+    return 0;
+}
+
+struct X {
+    frame sum(this:*X){ # member method
+        return 5;
+    }
+    frame add(a: int, b: int) ret int { # static method
+        return a + b;
+    }
+}
+
+frame print(a:*char) {...}
+```
+
+### Generics
+
+```adgLang
+frame identity<T>(val: T) ret T {
+    local temp: T = val;
+    return temp;
+}
+```
+
+## 4. Structs
+
+Structs can contain fields and methods. A struct can inherit from one parent struct with the `:` operator. Every struct implicitly inherits from the root `Type` struct.
+
+```adgLang
+struct Point {
+    x: int,
+    y: int,
+
+    frame new(x: int, y: int) ret Point { ... }
+}
+
+struct Point3D : Point {
+    z: int
+}
+
+struct Generic<T>{
+    val: T,
+    frame add<X>(a:T,b:X) ret (T,X){
+        return (a,b);
+    }
+    frame print<X>(obj:T, xx:X){
+        printn(xx);
+        print(obj.val);
+        print(xx);
+    }
+}
+```
+
+## 4.1 Specs - Interfaces
+
+Specs define interfaces that structs can implement.
+
+```adgLang
+spec Drawable {
+    frame draw(this:Self);
+}
+
+struct Shape {}
+
+struct Circle: Shape, Drawable, <other specs> {
+    radius: float,
+
+    frame draw(this: Circle) {
+        # Implementation of draw for Circle
+    }
+}
+```
+
+Structs can inherit only one struct, but they can implement multiple specs.
+
+## 5. Control Flow
+
+### Conditionals
+
+Conditions need to be enclosed in parentheses.
+
+```adgLang
+if (x > 0) {
+    # ...
+} else if (x < 0) {
+    # ...
+} else {
+    # ...
+}
+```
+
+### Loops
+
+The `loop` construct supports three forms: infinite loops, while-style loops, and C-style for loops.
+
+```adgLang
+# Infinite loop
+loop {
+    if (condition) break;
+}
+
+# While-style loop
+loop (i < 10) {
+    i = i + 1;
+}
+
+# C-style for loop
+loop (local i: int = 0; i < 10; i = i + 1) {
+    printf("%d", i);
+}
+
+# C-style loop with missing parts
+loop (; i < 10; ) { ... }
+loop (;;) { ... } # Equivalent to loop { ... }
+```
+
+### Defer
+
+The `defer` statement schedules a block of code to run when the current scope exits. This is useful for cleanup work like closing files or freeing memory.
+
+- **LIFO Order**: Deferred statements run in Last-In, First-Out order (reverse order of declaration).
+- **Scope Bound**: Execution happens when the enclosing block exits (via return, break, continue, throw, or fallthrough).
+- **Void Return**: The deferred block must return `void`. It cannot return a value to the outer function.
+
+```adgLang
+frame processFile(path: string) {
+    local file = open(path);
+    defer {
+        close(file);
+    }
+
+    # ... process file ...
+    # close(file) is called automatically here
+}
+```
+
+### Switch
+
+The switch expression needs to be enclosed in parentheses.
+
+```adgLang
+switch (val) {
+    case 1: { ... }
+    default: { ... }
+}
+```
+
+### Error Handling
+
+```adgLang
+try {
+    throw 1;
+} catch(e: int) {
+    # Handle error
+} catch(e:bool){
+    # Handle bool error
+} catch {
+    # Handle unknown
+}
+```
+
+## 6. Expressions & Operators
+
+### Operators
+
+- **Arithmetic**: `+`, `-`, `*`, `/`, `%`
+- **Logical**: `&&`, `||`, `!`
+- **Bitwise**: `&`, `|`, `^`, `~`, `<<`, `>>`
+- **Comparison**: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- **Assignment**: `=`, `+=`, `-=`, etc.
+- **Ternary**: `cond ? trueVal : falseVal`
+
+### Special Expressions
+
+- **Cast**: `cast<int>(3.5)` or `(3.5 as int)`
+- **Type Check**: `(val is int)`
+- **Sizeof**: `sizeof(int)` or `sizeof(var)`
+- **Match**: `match(val) { ... }` (Pattern matching) or `match<Type>(val)` (Type check)
+- **Address/Dereference**: `&var`, `*ptr`
+- **Lambda**: `|arg(s):type| ret Type { ... }` - may contain 0 or many args:type, return type may be omitted if void
+
+### Pattern Matching
+
+The `match` expression supports full pattern matching:
+
+```adgLang
+# Primitive patterns (int, float, bool, string, char)
+match (x) {
+    0 => "zero",
+    42 => "answer",
+    n if n < 0 => "negative",
+    _ => "other",
+}
+
+# Tuple patterns
+match (point) {
+    (0, 0) => "origin",
+    (0, y) => "y-axis",
+    (x, 0) => "x-axis",
+    (x, y) if x == y => "diagonal",
+    (x, y) => "other",
+}
+
+# Enum patterns
+enum Option<T> { Some(T), None }
+match (opt) {
+    Option.Some(val) => val,
+    Option.None => 0,
+}
+```
+
+**Pattern Types:**
+
+- **Literals**: `0`, `3.14`, `true`, `"hello"`, `'A'`
+- **Identifiers**: `x`, `n` (binds the matched value)
+- **Tuples**: `(a, b)`, `(0, y)`, `(x, y, z)`
+- **Wildcards**: `_` (matches anything, doesn't bind)
+- **Enums**: `Type.Variant(binding)`
+- **Guards**: `pattern if condition` (adds conditional logic)
+
+## 7. Known Limitations / Disallowed Constructs
+
+The grammar currently does **NOT** support the following:
+
+- **For Loops**: No C-style `for(;;)` or `foreach`. Use `loop`.
+- **Postfix Increment/Decrement**: `i++` and `i--` are not supported. Use `++i` or `i += 1`.
+- **Type Aliases**: Aliases are defined via `type Name = ...`, check Type Aliases Section above.
+- **Visibility**: No `public` / `private` modifiers (all members are public).
+- **Do-While**: No `do { ... } while` loop.
+
+## 8. Modules and Imports
+
+adgLang has a module system with explicit imports and exports.
+
+### Imports
+
+Imports must name the symbols to bring in and the source file. Types need to be enclosed in brackets `[]`.
+
+```adgLang
+# Import functions and values
+import myFunc, myGlobal from "./utils.adg";
+
+# Import types (must be in brackets)
+import [MyStruct], [MyType] from "./types.adg";
+
+# Mixed imports
+import process, [Config], [DisposableSpec], { MAX_USERS } from "./lib.adg";
+
+# Namespace import
+import * as std from "std";
+```
+
+### Exports
+
+Symbols are private to the module by default. Use `export` to make them available to other modules.
+
+```adgLang
+export myFunc;
+export [MyStruct];
+export { variable }
+```
+
+## 9. Inline Assembly
+
+adgLang supports inline assembly blocks for embedding LLVM IR or platform-specific assembly.
+
+### Syntax
+
+```adgLang
+# Raw LLVM IR (default or "llvm")
+asm("llvm") {
+    "%ptr = getelementptr i32, i32* (var), i32 0"
+    "store i32 1, i32* %ptr"
+}
+
+# Intel Syntax
+asm("intel") {
+    mov eax, (input)          # Input
+    add eax, 1
+    mov (=output), eax        # Output
+    [ "eax" ]                 # Clobbers
+}
+
+# AT&T Syntax
+asm("att") {
+    movl (input), %eax
+    addl $1, %eax
+    movl %eax, (=output)
+}
+```
+
+### Flavors
+
+- **`llvm`** (or `raw`): Injects content straight into LLVM IR. Supports `(var)` interpolation (resolves to pointer).
+- **`intel`** (or `x86`): Wraps content in `call void asm sideeffect inteldialect`. Supports full interpolation.
+- **`att`**: Wraps content in `call void asm sideeffect`. Supports full interpolation.
+
+### Interpolation & Constraints
+
+- **Input**: `(var)` or `(var: "constraint")`. Default constraint is `"r"`.
+- **Output**: `(=var)` or `(=var: "constraint")`. Default constraint is `"=r"`.
+- **Address**: `(&var)`. Passes the address of the variable.
+- **Clobbers**: `[ "reg1", "reg2", "memory" ]`.
+
+### Constraints
+
+Standard LLVM inline assembly constraints apply:
+
+- `"r"`: General purpose register
+- `"m"`: Memory operand
+- `"i"`: Immediate integer
+- `"={eax}"`: Specific register output
+- `"{eax}"`: Specific register input
+
+```adgLang
+asm("intel") {
+    mov eax, (val: "{ebx}")   # Force val into ebx
+    mov (=res: "={ecx}"), eax # Force result from ecx
+}
+```
+
+asm("x86") {
+"mov eax, 1"
+"add eax, 2"
+}
+
+# AT&T Syntax
+
+asm("att") {
+"movl $1, %eax"
+}
+
+### Variable Interpolation
+
+Variables can be interpolated into assembly blocks with parentheses.
+
+- **Raw LLVM (`asm`)**: `(var)` resolves to the pointer/register name.
+- **Intel (`asm("x86")`)**:
+ - `(var)`: Value of the variable.
+ - `(&var)`: Address of the variable.
+- **AT&T (`asm("att")`)**:
+ - `(var)`: Value of the variable.
+ - `(&var)`: Address of the variable.
+ - `((&var))`: Dereference address (memory access).
+
+```adgLang
+local val: int = 10;
+asm("x86") {
+    "mov eax, (val)"
+}
+asm("att") {
+    "movl (val), %eax"
+}
+```
+
+## 10. Standard Library Overview
+
+The adgLang standard library (`std`) provides core functionality.
+
+- **std/io.adg**: Input/Output (printf replacement soon).
+- **std/process.adg**: Process execution and management.
+- **std/string.adg**: String manipulation.
+- **std/collections**: Lists, Maps, Sets.
