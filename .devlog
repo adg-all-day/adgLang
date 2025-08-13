@@ -14,3 +14,4 @@
 - closures capture lexical environment correctly
 - add unit tests for lexer edge cases
 - draft LANGUAGE_SPEC.md sections 1-3
+- cli: add 'run' and 'repl' subcommands

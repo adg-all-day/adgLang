@@ -1,0 +1,224 @@
+/**
+ * Package Management Commands
+ * Handles pack, install, list, uninstall, init commands
+ */
+
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import { spawnSync } from "child_process";
+import { Command } from "commander";
+import { PackageManager, Compiler } from "../../compiler";
+import type {
+  PackageOptionsGlobal,
+  PackageOptionsOutput,
+  PackageOptionsVerbose,
+} from "../types";
+import { Logger } from "../../compiler/common/Logger";
+import { diagnosticFormatter } from "../DiagnosticFormatter";
+
+const log = new Logger("Package");
+
+/**
+ * Register all package management commands
+ */
+export function registerPackageCommands(program: Command): void {
+  // Pack command
+  program
+    .command("pack [dir]")
+    .description("Create a distributable package from a ADGLANG project")
+    .option("-o, --output <dir>", "output directory for the package")
+    .action((dir: string | undefined, options: PackageOptionsOutput) => {
+      try {
+        const packageDir = dir ? path.resolve(dir) : process.cwd();
+        const pm = new PackageManager();
+
+        // Check if code compiles before packing
+        const manifest = pm.loadManifest(packageDir);
+        const mainFile = manifest.main || "index.adg";
+        const entryPath = path.join(packageDir, mainFile);
+
+        if (fs.existsSync(entryPath)) {
+          log.info(`Verifying package integrity: ${mainFile}`);
+          const content = fs.readFileSync(entryPath, "utf-8");
+
+          const compiler = new Compiler({
+            filePath: entryPath,
+            resolveImports: true,
+            emitType: "llvm",
+            verbose: false,
+          });
+
+          const result = compiler.compile(content);
+
+          if (!result.success) {
+            log.error(
+              "Package verification failed - compilation errors detected:",
+            );
+            if (result.errors) {
+              console.error(diagnosticFormatter.formatErrors(result.errors));
+            }
+            process.exit(1);
+          }
+
+          // Verify LLVM IR validity by running clang -S
+          // This catches CodeGen errors like invalid instructions that TypeChecker missed
+          if (result.output) {
+            const tempLL = path.join(
+              os.tmpdir(),
+              `adgLang_pack_verify_${Date.now()}.ll`,
+            );
+            fs.writeFileSync(tempLL, result.output);
+
+            try {
+              const cc = process.env.CC || "clang";
+              const check = spawnSync(
+                cc,
+                [
+                  "-S",
+                  "-o",
+                  "/dev/null",
+                  "-x",
+                  "ir",
+                  tempLL,
+                  "-Wno-override-module",
+                ],
+                { encoding: "utf-8" },
+              );
+
+              if (check.status !== 0) {
+                log.error(
+                  "Package verification failed - generated invalid code:",
+                );
+                console.error(check.stderr || "Unknown clang error");
+                process.exit(1);
+              }
+            } catch (e) {
+              // If clang is missing, we warn but allow packing (maybe cross-compiling or no clang env)
+              log.warn(
+                `Skipping IR verification: ${e instanceof Error ? e.message : String(e)}`,
+              );
+            } finally {
+              if (fs.existsSync(tempLL)) {
+                fs.unlinkSync(tempLL);
+              }
+            }
+          }
+        } else {
+          log.warn(`Warning: Package entry point '${mainFile}' not found.`);
+        }
+
+        const tarball = pm.pack(packageDir, options.output);
+        log.info(`Package ready: ${tarball}`);
+      } catch (e) {
+        log.error(`${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+      }
+    });
+
+  // Install command
+  program
+    .command("install [package]")
+    .description("Install a ADGLANG package")
+    .option("-g, --global", "install package globally")
+    .option("-v, --verbose", "verbose output")
+    .action((pkg: string | undefined, options: PackageOptionsVerbose) => {
+      try {
+        const pm = new PackageManager();
+
+        if (!pkg) {
+          // Install dependencies from adgLang.json in current directory
+          if (!fs.existsSync("adgLang.json")) {
+            log.error("No adgLang.json found in current directory");
+            process.exit(1);
+          }
+
+          const manifest = pm.loadManifest(process.cwd());
+          const deps = {
+            ...manifest.dependencies,
+            ...manifest.devDependencies,
+          };
+
+          if (Object.keys(deps).length === 0) {
+            log.info("No dependencies to install");
+            return;
+          }
+
+          log.info(`Installing ${Object.keys(deps).length} dependencies...`);
+          for (const [name, version] of Object.entries(deps)) {
+            pm.install(`${name}-${version}.tgz`, options);
+          }
+        } else {
+          pm.install(pkg, options);
+        }
+      } catch (e) {
+        log.error(`${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+      }
+    });
+
+  // List command
+  program
+    .command("list")
+    .description("List installed packages")
+    .option("-g, --global", "list global packages")
+    .action((options: PackageOptionsGlobal) => {
+      try {
+        const pm = new PackageManager();
+        const packages = pm.list(options);
+
+        if (packages.length === 0) {
+          log.info("No packages installed");
+          return;
+        }
+
+        log.info(
+          `Installed packages (${options.global ? "global" : "local"}):\n`,
+        );
+        for (const pkg of packages) {
+          log.info(`  ${pkg.manifest.name}@${pkg.manifest.version}`);
+          if (pkg.manifest.description) {
+            log.info(`    ${pkg.manifest.description}`);
+          }
+          if (pkg.path) {
+            log.info(`    Location: ${pkg.path}`);
+          }
+        }
+      } catch (e) {
+        log.error(`${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+      }
+    });
+
+  // Init command
+  program
+    .command("init [name]")
+    .description("Initialize a new ADGLANG project")
+    .action((name: string | undefined) => {
+      try {
+        const pm = new PackageManager();
+        pm.init(process.cwd(), name);
+        log.info("Initialized new ADGLANG project");
+      } catch (e) {
+        log.error(`${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+      }
+    });
+
+  // Uninstall command
+  program
+    .command("uninstall <package>")
+    .alias("remove")
+    .description("Uninstall a package")
+    .option("-g, --global", "uninstall global package")
+    .action((pkg: string, options: PackageOptionsGlobal) => {
+      try {
+        const pm = new PackageManager();
+        pm.uninstall(pkg, options);
+        log.info(`Uninstalled ${pkg}`);
+      } catch (e) {
+        log.error(`${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+      }
+    });
+}
