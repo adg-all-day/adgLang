@@ -16,3 +16,4 @@
 - draft LANGUAGE_SPEC.md sections 1-3
 - cli: add 'run' and 'repl' subcommands
 - repl: history, multiline input, and ctrl-c handling
+- add if/else and while loops to grammar
