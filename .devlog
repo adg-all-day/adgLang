@@ -17,3 +17,4 @@
 - cli: add 'run' and 'repl' subcommands
 - repl: history, multiline input, and ctrl-c handling
 - add if/else and while loops to grammar
+- evaluator: short-circuit boolean operators
