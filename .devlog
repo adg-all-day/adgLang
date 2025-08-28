@@ -19,3 +19,4 @@
 - add if/else and while loops to grammar
 - evaluator: short-circuit boolean operators
 - fix crash on empty source file
+- add list and map literal parsing
