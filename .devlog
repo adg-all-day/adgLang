@@ -21,3 +21,4 @@
 - fix crash on empty source file
 - add list and map literal parsing
 - stdlib: math module (abs, pow, sqrt, floor, ceil)
+- stdlib: string module with split, join, trim
