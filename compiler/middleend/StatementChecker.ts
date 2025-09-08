@@ -1,0 +1,978 @@
+/**
+ * StatementChecker - Handles type checking of statements
+ * These methods are designed to be bound to a TypeChecker instance using .call()
+ */
+
+import * as AST from "../common/AST";
+import { CompilerError, DiagnosticSeverity } from "../common/CompilerError";
+import { INTEGER_TYPES } from "./TypeUtils";
+import type { CheckerContext } from "./CheckerContext";
+import type { Symbol } from "./SymbolTable";
+
+/**
+ * Check a block statement
+ */
+export function checkBlock(
+  this: CheckerContext,
+  stmt: AST.BlockStmt,
+  newScope: boolean = true,
+): void {
+  if (newScope) {
+    this.currentScope = this.currentScope.enterScope();
+  }
+
+  let terminated = false;
+  for (const s of stmt.statements) {
+    if (terminated) {
+      const error = new CompilerError(
+        "Unreachable code detected.",
+        "This statement follows a return, break, continue, or throw statement and will never be executed.",
+        s.location,
+      ).setSeverity(DiagnosticSeverity.Warning);
+      if (this.collectAllErrors) {
+        this.errors.push(error);
+      } else {
+        throw error;
+      }
+    }
+
+    try {
+      this.checkStatement(s);
+    } catch (e) {
+      if (this.collectAllErrors && e instanceof CompilerError) {
+        this.errors.push(e);
+        continue;
+      }
+      throw e;
+    }
+
+    if (
+      s.kind === "Return" ||
+      s.kind === "Break" ||
+      s.kind === "Continue" ||
+      s.kind === "Throw" ||
+      s.kind === "Fallthrough"
+    ) {
+      terminated = true;
+    }
+  }
+
+  if (newScope) {
+    const unused = this.currentScope.getUnusedVariables();
+    for (const symbol of unused) {
+      if (symbol.name.startsWith("_")) continue;
+      const error = new CompilerError(
+        `Unused variable '${symbol.name}'`,
+        "Variable is declared but never used.",
+        symbol.declaration.location,
+      );
+      if (this.collectAllErrors) {
+        this.errors.push(error);
+      } else {
+        throw error;
+      }
+    }
+    this.currentScope = this.currentScope.exitScope();
+  }
+}
+
+/**
+ * Check an if statement
+ */
+export function checkIf(this: CheckerContext, stmt: AST.IfStmt): void {
+  const condType = this.checkExpression(stmt.condition);
+  if (condType && !this.isBoolType(condType)) {
+    throw new CompilerError(
+      `If condition must be boolean, got ${this.typeToString(condType)}`,
+      "Ensure the condition evaluates to a boolean.",
+      stmt.condition.location,
+    );
+  }
+
+  // Check then branch
+  if (stmt.thenBranch) {
+    if (stmt.thenBranch.kind === "Block") {
+      checkBlock.call(this, stmt.thenBranch as AST.BlockStmt, true);
+    } else {
+      this.currentScope = this.currentScope.enterScope();
+      this.checkStatement(stmt.thenBranch);
+      this.currentScope = this.currentScope.exitScope();
+    }
+  }
+
+  // Check else branch
+  if (stmt.elseBranch) {
+    if (stmt.elseBranch.kind === "Block") {
+      checkBlock.call(this, stmt.elseBranch as AST.BlockStmt, true);
+    } else if (stmt.elseBranch.kind === "If") {
+      // Else if - no new scope needed for the 'if' itself as it handles its own scopes
+      this.checkStatement(stmt.elseBranch);
+    } else {
+      this.currentScope = this.currentScope.enterScope();
+      this.checkStatement(stmt.elseBranch);
+      this.currentScope = this.currentScope.exitScope();
+    }
+  }
+}
+
+/**
+ * Check a loop statement (for/while)
+ */
+export function checkLoop(this: CheckerContext, stmt: AST.LoopStmt): void {
+  this.loopDepth++;
+
+  // Enter loop scope for init variable
+  this.currentScope = this.currentScope.enterScope();
+
+  if (stmt.init) {
+    this.checkStatement(stmt.init);
+  }
+
+  if (stmt.condition) {
+    const condType = this.checkExpression(stmt.condition);
+    if (condType && !this.isBoolType(condType)) {
+      throw new CompilerError(
+        `Loop condition must be boolean, got ${this.typeToString(condType)}`,
+        "Ensure the condition evaluates to a boolean.",
+        stmt.condition.location,
+      );
+    }
+  }
+
+  if (stmt.step) {
+    this.checkExpression(stmt.step);
+  }
+
+  if (stmt.body) {
+    if (stmt.body.kind === "Block") {
+      checkBlock.call(this, stmt.body as AST.BlockStmt, true);
+    } else {
+      this.currentScope = this.currentScope.enterScope();
+      this.checkStatement(stmt.body);
+
+      // Check for unused variables in the loop body scope
+      const unused = this.currentScope.getUnusedVariables();
+      for (const symbol of unused) {
+        if (symbol.name.startsWith("_")) continue;
+        const error = new CompilerError(
+          `Unused variable '${symbol.name}'`,
+          "Variable is declared but never used.",
+          symbol.declaration.location,
+        );
+        if (this.collectAllErrors) {
+          this.errors.push(error);
+        } else {
+          throw error;
+        }
+      }
+      this.currentScope = this.currentScope.exitScope();
+    }
+  }
+
+  // Check for unused variables in the loop scope (init vars)
+  const unused = this.currentScope.getUnusedVariables();
+  for (const symbol of unused) {
+    if (symbol.name.startsWith("_")) continue;
+    const error = new CompilerError(
+      `Unused variable '${symbol.name}'`,
+      "Variable is declared but never used.",
+      symbol.declaration.location,
+    );
+    if (this.collectAllErrors) {
+      this.errors.push(error);
+    } else {
+      throw error;
+    }
+  }
+
+  this.currentScope = this.currentScope.exitScope();
+  this.loopDepth--;
+}
+
+/**
+ * Check a return statement
+ */
+export function checkReturn(this: CheckerContext, stmt: AST.ReturnStmt): void {
+  if (this.inDefer) {
+    if (stmt.value) {
+      throw new CompilerError(
+        "Return with value not allowed in defer block",
+        "Defer blocks must return void. Use 'return;' to exit the defer block early.",
+        stmt.location,
+      );
+    }
+    return;
+  }
+
+  const returnType = stmt.value
+    ? this.checkExpression(stmt.value)
+    : this.makeVoidType();
+
+  // Check if we are in a match arm block
+  // We need to access the TypeChecker instance which has matchContext
+  // Since 'this' is StatementCheckerContext, we might need to cast or add it to context
+  const typeChecker = this as any;
+  if (typeChecker.matchContext && typeChecker.matchContext.length > 0) {
+    const context =
+      typeChecker.matchContext[typeChecker.matchContext.length - 1];
+    if (returnType) {
+      context.inferredTypes.push(returnType);
+    }
+    return;
+  }
+
+  if (this.currentFunctionReturnType) {
+    const resolvedExpected = this.resolveType(this.currentFunctionReturnType);
+    const resolvedActual = returnType
+      ? this.resolveType(returnType)
+      : this.makeVoidType();
+
+    // Allow integer constant to match any compatible integer type
+    if (stmt.value && returnType && returnType.kind === "BasicType") {
+      const constVal = this.getIntegerConstantValue(stmt.value);
+      if (
+        constVal !== undefined &&
+        this.isIntegerTypeCompatible(constVal, resolvedExpected)
+      ) {
+        // Annotate the literal with the target type for code generation
+        if (stmt.value.kind === "Literal" || stmt.value.kind === "Unary") {
+          stmt.value.resolvedType = resolvedExpected;
+        }
+        return; // Types are compatible
+      }
+    }
+
+    if (!this.areTypesCompatible(resolvedExpected, resolvedActual)) {
+      throw new CompilerError(
+        `Return type mismatch: expected ${this.typeToString(
+          resolvedExpected,
+        )}, got ${this.typeToString(resolvedActual)}`,
+        "Ensure the returned value matches the function's return type.",
+        stmt.location,
+      );
+    }
+
+    // Safety check: BUG-106 Prevent returning address of stack local variable
+    if (
+      stmt.value &&
+      stmt.value.kind === "Unary" &&
+      stmt.value.operator.type === "Ampersand"
+    ) {
+      const operand = stmt.value.operand;
+      if (operand.kind === "Identifier") {
+        const symbol = this.currentScope.resolve(operand.name);
+        if (
+          symbol &&
+          (symbol.kind === "Variable" || symbol.kind === "Parameter")
+        ) {
+          // If it's a Variable, check if it's local
+          let isStackLocal = true;
+          if (symbol.kind === "Variable") {
+            const decl = symbol.declaration as AST.VariableDecl;
+            if (decl.isGlobal || decl.isConst) {
+              isStackLocal = false;
+            }
+          }
+          // Parameters are always stack-allocated (or registers spilled to stack),
+          // so returning their address is dangerous if passed by value.
+
+          // Allow unsafe return if variable name starts with "_"
+          if (isStackLocal && !operand.name.startsWith("_")) {
+            throw new CompilerError(
+              `Potential use-after-free: returning address of stack variable '${operand.name}'`,
+              `Variable '${operand.name}' is allocated on the stack and will be invalidated when the function returns. To suppress this error (unsafe), prefix the variable name with '_' (e.g., '_${operand.name}').`,
+              stmt.location,
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Check a try statement
+ */
+export function checkTry(this: CheckerContext, stmt: AST.TryStmt): void {
+  checkBlock.call(this, stmt.tryBlock);
+
+  // Check catch clauses
+  for (const clause of stmt.catchClauses) {
+    this.currentScope = this.currentScope.enterScope();
+    // Only define variable if it's a typed catch (not catch-all)
+    if (clause.variable && clause.type) {
+      this.defineSymbol(clause.variable, "Variable", clause.type, clause);
+    }
+    checkBlock.call(this, clause.body);
+    this.currentScope = this.currentScope.exitScope();
+  }
+}
+
+/**
+ * Check a throw statement
+ */
+export function checkThrow(this: CheckerContext, stmt: AST.ThrowStmt): void {
+  this.checkExpression(stmt.expression);
+}
+
+/**
+ * Check a switch statement
+ */
+export function checkSwitch(this: CheckerContext, stmt: AST.SwitchStmt): void {
+  this.switchDepth++;
+  try {
+    const valueType = this.checkExpression(stmt.expression);
+
+    if (valueType) {
+      const resolvedType = this.resolveType(valueType);
+      let isValid = false;
+
+      if (resolvedType.kind === "BasicType") {
+        if (INTEGER_TYPES.includes(resolvedType.name)) {
+          isValid = true;
+        } else {
+          const symbol = this.currentScope.resolve(resolvedType.name);
+          if (symbol && symbol.kind === "Enum") {
+            isValid = true;
+          }
+        }
+      } else if (
+        valueType.kind === "BasicType" &&
+        valueType.name === "string"
+      ) {
+        isValid = true;
+      }
+
+      if (!isValid) {
+        throw new CompilerError(
+          `Switch value must be an integer, string or enum type, got ${this.typeToString(
+            valueType,
+          )}`,
+          "Ensure the switch expression evaluates to an integer, string or enum.",
+          stmt.expression.location,
+        );
+      }
+    }
+
+    const seenValues = new Set<string>();
+
+    for (const caseItem of stmt.cases) {
+      const patternType = this.checkExpression(caseItem.value);
+      if (
+        patternType &&
+        valueType &&
+        !this.areTypesCompatible(valueType, patternType)
+      ) {
+        throw new CompilerError(
+          `Case pattern type ${this.typeToString(
+            patternType,
+          )} not compatible with switch value type ${this.typeToString(valueType)}`,
+          "Ensure case patterns match the switch value type.",
+          caseItem.value.location,
+        );
+      }
+
+      // Check for duplicate cases
+      // We need to evaluate the constant value of the case expression
+      let constVal = this.getIntegerConstantValue(caseItem.value);
+      let valStr: string | undefined;
+
+      if (constVal === undefined) {
+        if (
+          caseItem.value.kind === "Literal" &&
+          caseItem.value.type === "string"
+        ) {
+          valStr = (caseItem.value as AST.LiteralExpr).value as string;
+        } else {
+          const enumIndex = this.getEnumVariantIndex(caseItem.value);
+          if (enumIndex !== undefined) {
+            constVal = BigInt(enumIndex);
+          }
+        }
+      }
+
+      if (constVal !== undefined) {
+        // Replace non-literal constant expressions (like Enum variants) with Literals
+        if (caseItem.value.kind !== "Literal") {
+          caseItem.value = {
+            kind: "Literal",
+            value: Number(constVal),
+            raw: constVal.toString(),
+            type: "number",
+            location: caseItem.value.location,
+          } as AST.LiteralExpr;
+        }
+        valStr = constVal.toString();
+      }
+
+      if (valStr !== undefined) {
+        if (seenValues.has(valStr)) {
+          throw new CompilerError(
+            `Duplicate case value '${valStr}'`,
+            "Switch cases must have unique values.",
+            caseItem.value.location,
+          );
+        }
+        seenValues.add(valStr);
+      }
+
+      checkBlock.call(this, caseItem.body);
+
+      if (!isTerminated(caseItem.body)) {
+        throw new CompilerError(
+          "Switch case must end with a terminator",
+          "Add 'break', 'return', 'throw', 'continue', or 'fallthrough' at the end of the case block.",
+          caseItem.value.location,
+        );
+      }
+    }
+
+    if (stmt.defaultCase) {
+      checkBlock.call(this, stmt.defaultCase);
+      if (!isTerminated(stmt.defaultCase)) {
+        throw new CompilerError(
+          "Default case must end with a terminator",
+          "Add 'break', 'return', 'throw', or 'continue' at the end of the default block.",
+          stmt.defaultCase.location,
+        );
+      }
+    }
+  } finally {
+    this.switchDepth--;
+  }
+}
+
+/**
+ * Check a break statement
+ */
+export function checkBreak(this: CheckerContext, stmt: AST.BreakStmt): void {
+  if (this.loopDepth === 0 && this.switchDepth === 0) {
+    throw new CompilerError(
+      "'break' statement outside of loop or switch",
+      "Break statements can only be used inside loops or switch statements.",
+      stmt.location,
+    );
+  }
+}
+
+/**
+ * Check a fallthrough statement
+ */
+export function checkFallthrough(
+  this: CheckerContext,
+  stmt: AST.FallthroughStmt,
+): void {
+  if (this.switchDepth === 0) {
+    throw new CompilerError(
+      "'fallthrough' statement outside of switch",
+      "Fallthrough statements can only be used inside switch statements.",
+      stmt.location,
+    );
+  }
+}
+
+/**
+ * Check a continue statement
+ */
+export function checkContinue(
+  this: CheckerContext,
+  stmt: AST.ContinueStmt,
+): void {
+  if (this.loopDepth === 0) {
+    throw new CompilerError(
+      "'continue' statement outside of loop",
+      "Continue statements can only be used inside loops.",
+      stmt.location,
+    );
+  }
+}
+
+/**
+ * Check a variable declaration
+ */
+export function checkVariableDecl(
+  this: CheckerContext,
+  decl: AST.VariableDecl,
+): void {
+  if (Array.isArray(decl.name)) {
+    // Destructuring - enforce explicit type annotations
+    const flattenTargets = (
+      targets: any[],
+    ): { name: string; type?: AST.TypeNode }[] => {
+      const result: { name: string; type?: AST.TypeNode }[] = [];
+      for (const target of targets) {
+        if (Array.isArray(target)) {
+          result.push(...flattenTargets(target));
+        } else {
+          result.push(target);
+        }
+      }
+      return result;
+    };
+
+    const targets = flattenTargets(decl.name);
+
+    // Check that all non-underscore targets have explicit type annotations
+    for (const target of targets) {
+      if (target.name !== "_" && !target.type) {
+        throw new CompilerError(
+          `Missing type annotation for variable '${target.name}' in destructuring`,
+          "All variables in destructuring must have explicit type annotations. Add type annotations like: local (x: int, y: int) = tuple;",
+          decl.location,
+        );
+      }
+    }
+
+    const initType = decl.initializer
+      ? this.checkExpression(decl.initializer)
+      : undefined;
+
+    if (initType && initType.kind === "TupleType") {
+      const tupleType = initType as AST.TupleTypeNode;
+
+      const flattenNames = (innerTargets: any[]): string[] => {
+        const result: string[] = [];
+        for (const t of innerTargets) {
+          if (Array.isArray(t)) {
+            result.push(...flattenNames(t));
+          } else if (typeof t === "string") {
+            result.push(t);
+          } else if (t && typeof t === "object" && "name" in t) {
+            result.push(t.name);
+          }
+        }
+        return result;
+      };
+
+      const names = flattenNames(decl.name);
+
+      const assignTypes = (
+        nameList: string[],
+        types: AST.TypeNode[],
+        explicit: (AST.TypeNode | undefined)[],
+      ): void => {
+        for (let i = 0; i < nameList.length; i++) {
+          const name = nameList[i]!;
+          const inferredType = types[i];
+          const explicitType = explicit[i];
+
+          if (name === "_") continue;
+
+          const finalType = explicitType || inferredType;
+          if (finalType) {
+            this.defineSymbol(
+              name,
+              "Variable",
+              this.resolveType(finalType),
+              decl,
+              undefined,
+              decl.isConst,
+            );
+          }
+        }
+      };
+
+      const explicitTypes = targets.map((t) => t.type);
+      assignTypes(names, tupleType.types, explicitTypes);
+    } else {
+      for (const target of targets) {
+        if (target.name === "_") continue;
+        const finalType = target.type || initType;
+        if (finalType) {
+          this.defineSymbol(
+            target.name,
+            "Variable",
+            this.resolveType(finalType),
+            decl,
+            undefined,
+            decl.isConst,
+          );
+        }
+      }
+    }
+
+    return;
+  }
+
+  // Single variable
+  // Enforce explicit type annotation (no type inference)
+  if (!decl.typeAnnotation) {
+    throw new CompilerError(
+      `Missing type annotation for variable '${decl.name}'`,
+      "Variables must have explicit type annotations. Add a type annotation like: local x: int = 1;",
+      decl.location,
+    );
+  }
+
+  const declaredType = this.resolveType(decl.typeAnnotation);
+
+  // BUG-125: Check for undefined types in variable declarations
+  if (decl.typeAnnotation.kind === "BasicType") {
+    const typeName = (decl.typeAnnotation as AST.BasicTypeNode).name;
+    let symbol = this.currentScope.resolve(typeName);
+
+    // Handle qualified names (e.g., "Lib.Point", "std.Option")
+    if (!symbol && typeName.includes(".")) {
+      const parts = typeName.split(".");
+      let currentScope = this.currentScope;
+      let currentSymbol: Symbol | undefined;
+
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i]!;
+        currentSymbol = currentScope.resolve(part);
+        if (!currentSymbol) {
+          break;
+        }
+
+        if (i < parts.length - 1) {
+          if (currentSymbol.moduleScope) {
+            currentScope = currentSymbol.moduleScope;
+          } else {
+            currentSymbol = undefined;
+            break;
+          }
+        }
+      }
+      symbol = currentSymbol;
+    }
+
+    const PRIMITIVE_TYPES = new Set([
+      "i1",
+      "i8",
+      "u8",
+      "i16",
+      "u16",
+      "i32",
+      "u32",
+      "i64",
+      "u64",
+      "double",
+      "void",
+      "null",
+      "nullptr",
+      "int",
+      "uint",
+      "float",
+      "bool",
+      "char",
+      "uchar",
+      "short",
+      "ushort",
+      "long",
+      "ulong",
+      "string",
+      "f32",
+      "f64",
+      "Self",
+      "TypeInfo",
+      "Any",
+    ]);
+    // Skip single uppercase letters (generic params like T, U, V)
+    const looksLikeGenericParam =
+      typeName.length <= 2 && /^[A-Z][0-9]?$/.test(typeName);
+    if (!symbol && !PRIMITIVE_TYPES.has(typeName) && !looksLikeGenericParam) {
+      throw new CompilerError(
+        `Undefined type '${typeName}'`,
+        "The type is not defined. Make sure it's declared as a struct, enum, type alias, or imported from another module.",
+        decl.typeAnnotation.location,
+      );
+    }
+  }
+
+  // Check for void type (BUG-060)
+  if (declaredType) {
+    if (
+      declaredType.kind === "BasicType" &&
+      declaredType.name === "void" &&
+      declaredType.pointerDepth === 0
+    ) {
+      this.addError(
+        new CompilerError(
+          `Variable '${decl.name}' cannot be void.`,
+          "Variables cannot have type 'void'. Use '*void' for pointers.",
+          decl.location,
+        ),
+      );
+    }
+  }
+
+  if (declaredType) {
+    decl.resolvedType = declaredType;
+  }
+  let initType: AST.TypeNode | undefined;
+
+  if (decl.initializer) {
+    if (declaredType && this.matchContext) {
+      this.matchContext.push({ expectedType: declaredType, inferredTypes: [] });
+    }
+    try {
+      initType = this.checkExpression(decl.initializer);
+    } finally {
+      if (declaredType && this.matchContext) {
+        this.matchContext.pop();
+      }
+    }
+
+    if (initType) {
+      if (declaredType) {
+        // Infer generic arguments for enum variants if target type has them
+        if (
+          declaredType.kind === "BasicType" &&
+          declaredType.genericArgs.length > 0 &&
+          initType.kind === "BasicType" &&
+          initType.name === declaredType.name &&
+          (!initType.genericArgs || initType.genericArgs.length === 0)
+        ) {
+          // Check if initializer is an enum variant
+          const enumVariantInfo = (decl.initializer as any).enumVariantInfo;
+          if (enumVariantInfo) {
+            // Update generic args
+            enumVariantInfo.genericArgs = declaredType.genericArgs;
+            // Also update initType to match declaredType
+            initType = declaredType;
+            // Update resolvedType on initializer
+            decl.initializer.resolvedType = declaredType;
+          }
+        }
+
+        const resolvedInit = this.resolveType(initType);
+        const resolvedDecl = this.resolveType(declaredType);
+
+        // Check for integer constant compatibility
+        const constVal = this.getIntegerConstantValue(decl.initializer);
+        if (constVal !== undefined) {
+          if (
+            constVal === 0n ||
+            this.isIntegerTypeCompatible(constVal, resolvedDecl)
+          ) {
+            // Annotate the literal for codegen
+            if (
+              decl.initializer.kind === "Literal" ||
+              decl.initializer.kind === "Unary"
+            ) {
+              decl.initializer.resolvedType = resolvedDecl;
+            }
+          } else if (
+            resolvedDecl.kind === "BasicType" &&
+            INTEGER_TYPES.includes(resolvedDecl.name)
+          ) {
+            throw new CompilerError(
+              `Integer overflow: value ${constVal} does not fit in type ${this.typeToString(
+                resolvedDecl,
+              )}`,
+              `Ensure the value is within the range of ${this.typeToString(resolvedDecl)}.`,
+              decl.location,
+            );
+          } else if (!this.areTypesCompatible(resolvedDecl, resolvedInit)) {
+            // Check for implicit pointer-to-value conversion for struct literals
+            // Allow assigning StructLiteral to *Struct (allocates on stack)
+            const isStructLiteralToPointer =
+              resolvedDecl.kind === "BasicType" &&
+              resolvedInit.kind === "BasicType" &&
+              resolvedDecl.name === resolvedInit.name &&
+              resolvedDecl.pointerDepth === resolvedInit.pointerDepth + 1 &&
+              decl.initializer?.kind === "StructLiteral";
+
+            if (!isStructLiteralToPointer) {
+              throw new CompilerError(
+                `Type mismatch: cannot assign ${this.typeToString(
+                  resolvedInit,
+                )} to ${this.typeToString(resolvedDecl)}`,
+                "Ensure the initializer type matches the declared type.",
+                decl.location,
+                "E001",
+              );
+            }
+          }
+        } else if (!this.areTypesCompatible(resolvedDecl, resolvedInit)) {
+          // Check for implicit pointer-to-value conversion for struct literals
+          // Allow assigning StructLiteral to *Struct (allocates on stack)
+          const isStructLiteralToPointer =
+            resolvedDecl.kind === "BasicType" &&
+            resolvedInit.kind === "BasicType" &&
+            resolvedDecl.name === resolvedInit.name &&
+            resolvedDecl.pointerDepth === resolvedInit.pointerDepth + 1 &&
+            decl.initializer?.kind === "StructLiteral";
+
+          if (!isStructLiteralToPointer) {
+            throw new CompilerError(
+              `Type mismatch: cannot assign ${this.typeToString(
+                resolvedInit,
+              )} to ${this.typeToString(resolvedDecl)}`,
+              "Ensure the initializer type matches the declared type.",
+              decl.location,
+              "E001",
+            );
+          }
+        }
+        // Type annotation is required, so we already have declaredType
+      } else {
+        // No declared type check needed since we enforce type annotations above
+      }
+    }
+  }
+
+  if (!declaredType) {
+    throw new CompilerError(
+      `Cannot infer type for variable '${decl.name}'`,
+      "Either provide a type annotation or an initializer.",
+      decl.location,
+    );
+  }
+
+  decl.resolvedType = declaredType;
+
+  // Check if type is void (and not pointer)
+  if (
+    declaredType.kind === "BasicType" &&
+    declaredType.name === "void" &&
+    declaredType.pointerDepth === 0
+  ) {
+    throw new CompilerError(
+      `Variable '${decl.name}' cannot be of type 'void'`,
+      "Variables cannot be void. Use '*void' for void pointers.",
+      decl.location,
+    );
+  }
+
+  // Check for shadowing in current scope
+  const existing = this.currentScope.getInCurrentScope(decl.name as string);
+  if (existing) {
+    throw new CompilerError(
+      `Variable '${decl.name}' is already declared in this scope`,
+      `Cannot redeclare '${decl.name}' in the same scope.`,
+      decl.location,
+    );
+  }
+  this.defineSymbol(
+    decl.name as string,
+    "Variable",
+    declaredType,
+    decl,
+    undefined,
+    decl.isConst,
+  );
+  decl.resolvedType = declaredType;
+}
+
+/**
+ * Check if all paths in a statement return
+ */
+export function checkAllPathsReturn(
+  this: CheckerContext,
+  stmt: AST.Statement,
+): boolean {
+  switch (stmt.kind) {
+    case "Return":
+      return true;
+    case "Block":
+      for (const s of stmt.statements) {
+        if (checkAllPathsReturn.call(this, s)) return true;
+      }
+      return false;
+    case "If":
+      if (!stmt.elseBranch) return false;
+      return (
+        checkAllPathsReturn.call(this, stmt.thenBranch) &&
+        checkAllPathsReturn.call(this, stmt.elseBranch)
+      );
+    case "Loop":
+      // Loops don't guarantee return
+      return false;
+    case "Switch":
+      // Check if all cases return (simplified)
+      if (!stmt.cases || stmt.cases.length === 0) return false;
+      for (const c of stmt.cases) {
+        let caseReturns = false;
+        for (const s of c.body.statements) {
+          if (checkAllPathsReturn.call(this, s)) {
+            caseReturns = true;
+            break;
+          }
+        }
+        if (!caseReturns) return false;
+      }
+      return true;
+    case "Throw":
+      return true;
+    case "ExpressionStmt": {
+      // Check if this is a match expression where all arms return
+      const exprStmt = stmt as AST.ExpressionStmt;
+      if (exprStmt.expression.kind === "Match") {
+        const matchExpr = exprStmt.expression as AST.MatchExpr;
+        // Check if all arms have a return (or throw) in their body
+        if (matchExpr.arms.length === 0) return false;
+        for (const arm of matchExpr.arms) {
+          let armReturns = false;
+          if (arm.body.kind === "Block") {
+            // Block body - check if any statement returns
+            for (const s of (arm.body as AST.BlockStmt).statements) {
+              if (checkAllPathsReturn.call(this, s)) {
+                armReturns = true;
+                break;
+              }
+            }
+          } else {
+            // Expression body - doesn't contain return statements
+            armReturns = false;
+          }
+          if (!armReturns) return false;
+        }
+        return true;
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+/**
+ * Check an asm block statement
+ */
+export function checkAsm(this: CheckerContext, stmt: AST.AsmBlockStmt): void {
+  // Parse content to find variable usages: (varName) or (&varName)
+  const regex = /\((&?)(\w+)\)/g;
+  let match;
+  while ((match = regex.exec(stmt.content)) !== null) {
+    const varName = match[2];
+    const symbol = this.currentScope.resolve(varName!);
+    if (!symbol) {
+      throw new CompilerError(
+        `Undefined variable '${varName}' in asm block`,
+        "Variables used in asm blocks must be defined in the current scope.",
+        stmt.location,
+      );
+    }
+  }
+}
+
+/**
+ * Check a defer statement
+ */
+export function checkDefer(this: CheckerContext, stmt: AST.DeferStmt): void {
+  const prevInDefer = this.inDefer;
+  this.inDefer = true;
+  try {
+    this.checkStatement(stmt.statement);
+  } finally {
+    this.inDefer = prevInDefer;
+  }
+}
+
+function isTerminated(block: AST.BlockStmt): boolean {
+  if (block.statements.length === 0) {
+    return false;
+  }
+  const last = block.statements[block.statements.length - 1];
+  if (!last) return false;
+  const kind = last.kind as string;
+
+  return (
+    kind === "Return" ||
+    kind === "Break" ||
+    kind === "Continue" ||
+    kind === "Throw" ||
+    kind === "Fallthrough"
+  );
+}
