@@ -24,3 +24,4 @@
 - stdlib: string module with split, join, trim
 - improve error messages with caret indicators
 - type-checker: infer literals and binary ops
+- add struct types and field access syntax
