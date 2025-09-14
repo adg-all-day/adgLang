@@ -25,3 +25,4 @@
 - improve error messages with caret indicators
 - type-checker: infer literals and binary ops
 - add struct types and field access syntax
+- vscode-ext: minimal grammar for syntax highlighting

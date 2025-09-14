@@ -1,0 +1,244 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ADGLANG",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.adg",
+          "begin": "/#",
+          "end": "#/"
+        },
+        {
+          "name": "comment.line.number-sign.adg",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.adg",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "meta.embedded.line.adg",
+              "contentName": "source.adg",
+              "begin": "\\$\\{",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.template-expression.begin.adg"
+                }
+              },
+              "end": "\\}",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.template-expression.end.adg"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "#numbers"
+                },
+                {
+                  "include": "#operators"
+                },
+                {
+                  "include": "#constants"
+                },
+                {
+                  "match": "[a-zA-Z_][a-zA-Z0-9_]*",
+                  "name": "variable.other.adg"
+                }
+              ]
+            },
+            {
+              "name": "constant.character.escape.adg",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.adg",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.adg",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.adg",
+          "match": "\\b(if|else|loop|break|continue|return|switch|case|default|try|catch|throw|defer|fallthrough)\\b"
+        },
+        {
+          "name": "keyword.control.import.adg",
+          "match": "\\b(import|from|as|export|extern)\\b"
+        },
+        {
+          "name": "storage.type.function.adg",
+          "match": "\\b(frame)\\b"
+        },
+        {
+          "name": "storage.type.class.adg",
+          "match": "\\b(struct|spec|enum)\\b"
+        },
+        {
+          "name": "storage.type.adg",
+          "match": "\\b(type)\\b"
+        },
+        {
+          "name": "storage.modifier.adg",
+          "match": "\\b(global|local|const|ret|static)\\b"
+        },
+        {
+          "name": "keyword.operator.adg",
+          "match": "\\b(cast|sizeof|is|as)\\b"
+        },
+        {
+          "name": "keyword.control.adg",
+          "match": "\\b(match|asm)\\b"
+        },
+        {
+          "name": "variable.language.adg",
+          "match": "\\b(this|self|Self)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.adg",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.adg",
+          "match": "\\b(null|nullptr)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.adg",
+          "match": "\\b0x[0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.adg",
+          "match": "\\b0b[01]+\\b"
+        },
+        {
+          "name": "constant.numeric.octal.adg",
+          "match": "\\b0o[0-7]+\\b"
+        },
+        {
+          "name": "constant.numeric.float.adg",
+          "match": "\\b\\d+\\.\\d+([eE][+-]?\\d+)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.adg",
+          "match": "\\b\\d+\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.adg",
+          "match": "(=|\\+=|\\-=|\\*=|/=|%=|&=|\\|=|\\^=|<<=|>>=)"
+        },
+        {
+          "name": "keyword.operator.comparison.adg",
+          "match": "(==|!=|<|>|<=|>=)"
+        },
+        {
+          "name": "keyword.operator.logical.adg",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.adg",
+          "match": "(\\+|\\-|\\*|/|%|\\+\\+|\\-\\-)"
+        },
+        {
+          "name": "keyword.operator.bitwise.adg",
+          "match": "(&|\\||\\^|~|<<|>>)"
+        },
+        {
+          "name": "keyword.operator.other.adg",
+          "match": "(\\?|::|->|=>)"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.accessor.adg",
+          "match": "\\."
+        },
+        {
+          "name": "punctuation.separator.comma.adg",
+          "match": ","
+        },
+        {
+          "name": "punctuation.terminator.statement.adg",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.colon.adg",
+          "match": ":"
+        },
+        {
+          "name": "meta.brace.round.adg",
+          "match": "[\\(\\)]"
+        },
+        {
+          "name": "meta.brace.square.adg",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "meta.brace.curly.adg",
+          "match": "[\\{\\}]"
+        },
+        {
+          "name": "punctuation.definition.template-expression.begin.adg",
+          "match": "<"
+        },
+        {
+          "name": "punctuation.definition.template-expression.end.adg",
+          "match": ">"
+        }
+      ]
+    }
+  },
+  "scopeName": "source.adg"
+}
