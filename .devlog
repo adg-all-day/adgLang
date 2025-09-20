@@ -27,3 +27,4 @@
 - add struct types and field access syntax
 - vscode-ext: minimal grammar for syntax highlighting
 - vscode-ext: snippets for common constructs
+- compiler: lower AST to typed IR
