@@ -28,3 +28,4 @@
 - vscode-ext: minimal grammar for syntax highlighting
 - vscode-ext: snippets for common constructs
 - compiler: lower AST to typed IR
+- rework error spans to merge across multiline tokens
