@@ -29,3 +29,4 @@
 - vscode-ext: snippets for common constructs
 - compiler: lower AST to typed IR
 - rework error spans to merge across multiline tokens
+- add pattern matching with literal and tuple patterns
