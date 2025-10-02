@@ -31,3 +31,4 @@
 - rework error spans to merge across multiline tokens
 - add pattern matching with literal and tuple patterns
 - match exhaustiveness checks for sum types
+- tests: golden-output runner for examples/
