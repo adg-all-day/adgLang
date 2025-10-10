@@ -34,3 +34,4 @@
 - tests: golden-output runner for examples/
 - fix shadowing bug in nested let blocks
 - package manager: parse adgLang-package.json
+- package manager: resolve dependencies from local registry
