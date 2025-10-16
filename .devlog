@@ -36,3 +36,4 @@
 - package manager: parse adgLang-package.json
 - package manager: resolve dependencies from local registry
 - draft PACKAGE_MANAGER.md describing resolution semantics
+- compiler: constant folding pass
