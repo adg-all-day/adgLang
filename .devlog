@@ -39,3 +39,4 @@
 - compiler: constant folding pass
 - compiler: dead code elimination on IR
 - playground: wasm build of interpreter
+- playground: monaco editor with adgLang grammar
