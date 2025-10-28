@@ -40,3 +40,4 @@
 - compiler: dead code elimination on IR
 - playground: wasm build of interpreter
 - playground: monaco editor with adgLang grammar
+- playground: share-by-url with gzip+base64 encoding
