@@ -42,3 +42,4 @@
 - playground: monaco editor with adgLang grammar
 - playground: share-by-url with gzip+base64 encoding
 - fuzz: random AST generator for parser stress test
+- fuzz: minimize crashing inputs with shrinker
