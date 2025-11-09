@@ -44,3 +44,4 @@
 - fuzz: random AST generator for parser stress test
 - fuzz: minimize crashing inputs with shrinker
 - fix parser stack overflow on deeply nested parens
+- switch parser to iterative precedence climbing
