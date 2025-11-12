@@ -45,3 +45,4 @@
 - fuzz: minimize crashing inputs with shrinker
 - fix parser stack overflow on deeply nested parens
 - switch parser to iterative precedence climbing
+- type checker: support generics with monomorphization
