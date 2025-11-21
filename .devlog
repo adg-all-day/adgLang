@@ -48,3 +48,4 @@
 - type checker: support generics with monomorphization
 - add traits and trait bounds to type system
 - trait resolution: handle multi-bound where clauses
+- stdlib: io module with read_file, write_file
