@@ -50,3 +50,4 @@
 - trait resolution: handle multi-bound where clauses
 - stdlib: io module with read_file, write_file
 - stdlib: json parser and serializer
+- benchmark: harness comparing interpreter vs compiled paths
