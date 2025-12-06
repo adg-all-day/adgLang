@@ -53,3 +53,4 @@
 - benchmark: harness comparing interpreter vs compiled paths
 - benchmark: nbody, mandelbrot, binary-trees suite
 - compiler: tail-call optimization for self-recursion
+- fix shadowing of trait methods by free functions
