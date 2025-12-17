@@ -57,3 +57,4 @@
 - completions: bash and zsh completion scripts
 - completions: fish completions
 - add CHANGELOG.md and tag v0.1.0
+- docs: getting-started walkthrough
