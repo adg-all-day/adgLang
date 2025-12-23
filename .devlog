@@ -59,3 +59,4 @@
 - add CHANGELOG.md and tag v0.1.0
 - docs: getting-started walkthrough
 - docs: language tour with runnable snippets
+- fix repl crash on incomplete string literal
