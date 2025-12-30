@@ -61,3 +61,4 @@
 - docs: language tour with runnable snippets
 - fix repl crash on incomplete string literal
 - lsp: server scaffolding with hover and goto-def
+- lsp: incremental document sync
