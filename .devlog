@@ -63,3 +63,4 @@
 - lsp: server scaffolding with hover and goto-def
 - lsp: incremental document sync
 - lsp: diagnostics from compiler error stream
+- lsp: completion provider for symbols in scope
