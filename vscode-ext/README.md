@@ -1,0 +1,135 @@
+# adgLang VS Code Extension
+
+This extension gives you full language support for adgLang, including syntax highlighting, code completion, and advanced navigation features.
+
+## Features
+
+- **Syntax Highlighting**:
+ - Full highlighting for keywords, control flow, types, and literals.
+ - Separate colors for variable declarations (`local`, `global`) and function definitions.
+ - Support for adgLang-specific constructs like `frame`, `struct`, `enum`, `import`, and `asm` blocks.
+ - **NEW**: Enhanced enum support with variant highlighting (`EnumType.Variant`).
+ - **NEW**: Pattern guard syntax highlighting for conditional pattern matching.
+ - **NEW**: Type-parameterized match syntax (`match<Type>(value)`).
+
+- **IntelliSense & Tooltips**:
+ - **Hover Information**: Hover to see full signatures for functions, structs, enums, and specs.
+ - **Spec Tooltips**: Hover over spec (interface) definitions to view all method signatures and implementation relationships.
+ - **Enum Tooltips**: Hover over enum variants to see their signatures and payload types (unit, tuple, or struct variants).
+ - **Method Implementation Info**: When hovering over methods, see which spec (interface) they implement.
+ - **Member Access**: Hover over object properties (for example, `obj.field`) to view the field's type and definition.
+ - **Keyword Documentation**: Explanations for standard adgLang keywords and built-in types.
+ - **Cross-File Support**: Tooltips work for imported symbols across multiple files.
+
+- **Navigation**:
+ - **Go to Definition**: Jump to symbol definitions (functions, structs, enums, variables) in the current file or across imported files.
+ - **Import Resolution**: Click import paths to open the referenced file.
+
+- **Code Completion**:
+ - **Keyword & Type Suggestions**: Autocomplete for keywords (`if`, `loop`, `struct`, `enum`, `match`, etc.) and built-in types (`int`, `bool`, `string`, etc.).
+ - **Member Access Completion**: Type-aware autocomplete for struct fields and methods (for example, `user.` shows `getName`, `age`, etc.).
+ - **Partial Text Filtering**: Smart filtering while you type (for example, `user.getNa` filters to `getName`).
+ - **Imported Symbol Completion**: Full support for both bracketed (`import [App] from "adgLang-express"`) and bare function imports (`import sprintf, strcpy from "adgLang-express"`).
+ - **In-Memory Document Support**: Completions work on unsaved files with real-time parsing.
+ - **Global Symbol Search**: Re-exported symbols from packages resolve correctly.
+ - **Generic Type Support**: Completions for generic types like `Array<int>.` show all methods.
+ - **Enum Variants**: Type `EnumName.` to see all variants.
+
+- **Inlay Hints**:
+ - **Parameter Names**: See parameter names inline in function calls: `calculate(→base: 10, →power: 2)`.
+ - **Return Types**: View inferred return types for complex expressions.
+ - **Type Parameters**: See generic type arguments in instantiations.
+
+## Installation
+
+### Option 1: Automatic Installation (Recommended)
+
+There is a helper script that handles dependency installation, compilation, packaging, and installation into VS Code.
+
+1. Navigate to the extension directory:
+
+ ```bash
+ cd vscode-ext
+ ```
+
+2. Run the install script:
+
+ ```bash
+ ./install.sh
+ ```
+
+ Follow the prompt (type `y`) to install the extension right away.
+
+### Option 2: Manual Installation
+
+If you want to build and install it yourself:
+
+1. **Install Dependencies**:
+
+ ```bash
+ cd vscode-ext
+ npm install
+ ```
+
+2. **Compile**:
+
+ ```bash
+ npm run compile
+ ```
+
+3. **Package**:
+ Generate the `.vsix` file:
+
+ ```bash
+ npx @vscode/vsce package
+ ```
+
+4. **Install**:
+ Install the generated `.vsix` file with the VS Code CLI:
+ ```bash
+ code --install-extension adgLang-vscode-0.0.1.vsix
+ ```
+ _(Note: The version number `0.0.1` may vary)_
+
+## Development Setup
+
+To contribute or debug the extension:
+
+1. Open the `vscode-ext` folder in VS Code.
+2. Run `npm install`.
+3. Press `F5` to open a new **Extension Development Host** window with the extension loaded.
+4. Open a `.adg` file in the new window to test features.
+
+### Running Tests
+
+The extension includes a full test suite:
+
+```bash
+cd vscode-ext
+bun test
+```
+
+**Current Test Status**: ✅ **12/12 tests passing**
+
+Tests cover:
+
+- ✅ Member access completions (`user.`, `loopVar.`)
+- ✅ Partial text filtering (`user.getNa`)
+- ✅ Method snippet generation (omitting `this` parameter)
+- ✅ Enum variant completions (`Status.Active`)
+- ✅ General symbol completions
+- ✅ Hover information
+- ✅ Go-to-definition navigation
+- ✅ Generic type completions (`Array<int>.`)
+- ✅ Chained member access
+- ✅ Nested scope handling
+
+All language server features are fully tested and ready for production use.
+
+## Structure
+
+- `package.json`: Extension manifest and configuration.
+- `language-configuration.json`: Language configuration (comments, brackets, auto-closing).
+- `syntaxes/adgLang.tmLanguage.json`: TextMate grammar for syntax highlighting.
+- `src/extension.ts`: LSP Client entry point.
+- `src/server.ts`: LSP Server implementation (handles hover, definition, completion).

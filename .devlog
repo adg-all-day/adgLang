@@ -64,3 +64,4 @@
 - lsp: incremental document sync
 - lsp: diagnostics from compiler error stream
 - lsp: completion provider for symbols in scope
+- vscode-ext: bundle lsp client and activation events

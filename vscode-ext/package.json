@@ -1,0 +1,85 @@
+{
+  "name": "adgLang-vscode",
+  "displayName": "ADGLANG Language Support",
+  "description": "Language support for ADGLANG",
+  "version": "0.0.1",
+  "publisher": "",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/vscode-ext/src/extension.js",
+  "activationEvents": [
+    "onLanguage:adgLang"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "test": "bun test src/test/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.7",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "peggy": "^5.0.6",
+    "vscode-languageclient": "^8.1.0",
+    "vscode-languageserver": "^8.1.0",
+    "vscode-languageserver-textdocument": "^1.0.8"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "adgLang",
+        "aliases": [
+          "ADGLANG",
+          "adgLang"
+        ],
+        "extensions": [
+          ".adg"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "adgLang",
+        "scopeName": "source.adg",
+        "path": "./syntaxes/adgLang.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "adgLang",
+        "path": "./snippets/adgLang.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "ADGLANG configuration",
+      "properties": {
+        "adgLangLanguageServer.maxNumberOfProblems": {
+          "scope": "resource",
+          "type": "number",
+          "default": 100,
+          "description": "Controls the maximum number of problems produced by the server."
+        },
+        "adgLangLanguageServer.formatOnSave": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Enable ADGLANG format-on-save for .adg files."
+        },
+        "adgLangLanguageServer.adgLangHome": {
+          "scope": "resource",
+          "type": "string",
+          "description": "Path to ADGLANG installation directory (ADGLANG_HOME)."
+        }
+      }
+    }
+  }
+}
