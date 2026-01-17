@@ -67,3 +67,4 @@
 - vscode-ext: bundle lsp client and activation events
 - fix race condition in lsp document version tracking
 - compiler: add bytecode VM backend
+- vm: register-based instruction set
