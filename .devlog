@@ -68,3 +68,4 @@
 - fix race condition in lsp document version tracking
 - compiler: add bytecode VM backend
 - vm: register-based instruction set
+- vm: inline caches for property access
