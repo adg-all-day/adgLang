@@ -69,3 +69,4 @@
 - compiler: add bytecode VM backend
 - vm: register-based instruction set
 - vm: inline caches for property access
+- vm: mark-and-sweep gc with object headers
