@@ -70,3 +70,4 @@
 - vm: register-based instruction set
 - vm: inline caches for property access
 - vm: mark-and-sweep gc with object headers
+- fix gc not tracing closure environments
