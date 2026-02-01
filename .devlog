@@ -72,3 +72,4 @@
 - vm: mark-and-sweep gc with object headers
 - fix gc not tracing closure environments
 - stdlib: time module (now, sleep, format)
+- stdlib: regex module backed by re2
