@@ -76,3 +76,4 @@
 - package manager: lockfile with content hashes
 - package manager: 'add' and 'remove' subcommands
 - package manager: semver range resolution
+- fix: package resolver loops on cyclic deps
