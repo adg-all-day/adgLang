@@ -77,3 +77,4 @@
 - package manager: 'add' and 'remove' subcommands
 - package manager: semver range resolution
 - fix: package resolver loops on cyclic deps
+- introduce async/await with green threads
