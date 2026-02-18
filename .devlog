@@ -78,3 +78,4 @@
 - package manager: semver range resolution
 - fix: package resolver loops on cyclic deps
 - introduce async/await with green threads
+- scheduler: work-stealing queue per worker
