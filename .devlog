@@ -79,3 +79,4 @@
 - fix: package resolver loops on cyclic deps
 - introduce async/await with green threads
 - scheduler: work-stealing queue per worker
+- stdlib: net module with tcp listener and stream
