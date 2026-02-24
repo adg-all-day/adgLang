@@ -1,0 +1,10 @@
+{
+  "name": "adgLang-templ",
+  "version": "0.1.6",
+  "description": "ADGLANG Template Engine Compiler",
+  "bin": {
+    "adgLang-templ": "dist/adgLang-templ"
+  },
+  "main": "src/html.adg",
+  "exports": ["src/html.adg"]
+}

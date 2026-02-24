@@ -1,0 +1,8 @@
+{
+  "name": "adgLang-db",
+  "version": "0.1.0",
+  "description": "A simple in-memory database for ADGLANG",
+  "main": "index.adg",
+  "author": "ADGLANG User",
+  "license": "MIT"
+}

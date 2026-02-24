@@ -1,0 +1,7 @@
+{
+  "name": "adgLang-express",
+  "version": "0.1.0",
+  "description": "A mini web framework for ADGLANG",
+  "entry": "index.adg",
+  "dependencies": {}
+}

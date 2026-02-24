@@ -1,0 +1,7 @@
+{
+  "name": "adgLang-http-parser",
+  "version": "0.1.0",
+  "description": "HTTP request parsing library for ADGLANG",
+  "main": "index.adg",
+  "license": "MIT"
+}

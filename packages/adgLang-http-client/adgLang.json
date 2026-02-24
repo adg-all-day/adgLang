@@ -1,0 +1,9 @@
+{
+  "name": "adgLang-http-client",
+  "version": "0.1.0",
+  "description": "HTTP Client for ADGLANG",
+  "main": "index.adg",
+  "dependencies": {
+    "network-utils": "path:./src"
+  }
+}

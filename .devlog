@@ -80,3 +80,4 @@
 - introduce async/await with green threads
 - scheduler: work-stealing queue per worker
 - stdlib: net module with tcp listener and stream
+- stdlib: http server example

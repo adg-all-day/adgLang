@@ -1,0 +1,14 @@
+{
+  "name": "adgLang-templ-cli",
+  "version": "0.1.0",
+  "description": "CLI for compiling ADGLANG templates",
+  "scripts": {
+    "build": "adgLang build ./src/cli.adg --compile --outfile ./dist/adgLang-templ"
+  },
+  "dependencies": {
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}
