@@ -81,3 +81,4 @@
 - scheduler: work-stealing queue per worker
 - stdlib: net module with tcp listener and stream
 - stdlib: http server example
+- fix: deadlock when multiple tasks await same channel
