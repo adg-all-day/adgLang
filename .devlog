@@ -82,3 +82,4 @@
 - stdlib: net module with tcp listener and stream
 - stdlib: http server example
 - fix: deadlock when multiple tasks await same channel
+- compiler: ssa-form intermediate for optimizer
