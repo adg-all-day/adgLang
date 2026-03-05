@@ -83,3 +83,4 @@
 - stdlib: http server example
 - fix: deadlock when multiple tasks await same channel
 - compiler: ssa-form intermediate for optimizer
+- optimizer: common subexpression elimination
