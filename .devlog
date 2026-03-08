@@ -84,3 +84,4 @@
 - fix: deadlock when multiple tasks await same channel
 - compiler: ssa-form intermediate for optimizer
 - optimizer: common subexpression elimination
+- optimizer: loop-invariant code motion
