@@ -85,3 +85,4 @@
 - compiler: ssa-form intermediate for optimizer
 - optimizer: common subexpression elimination
 - optimizer: loop-invariant code motion
+- tests: property-based tests for parser/printer roundtrip
