@@ -1,0 +1,1480 @@
+import * as AST from "../common/AST";
+import { Token } from "../frontend/Token";
+
+export class Formatter {
+  private indentLevel: number = 0;
+  private indentString: string = "    "; // 4 spaces
+  private comments: Token[] = [];
+  private currentCommentIndex: number = 0;
+  private lastLineProcessed: number = 0;
+
+  format(program: AST.Program): string {
+    if ((program as any).errors && (program as any).errors.length > 0) {
+      throw (program as any).errors[0];
+    }
+
+    this.indentLevel = 0;
+    this.comments = program.comments || [];
+    // Sort comments by position
+    this.comments.sort((a, b) => {
+      if (a.line !== b.line) return a.line - b.line;
+      return a.column - b.column;
+    });
+    this.currentCommentIndex = 0;
+    this.lastLineProcessed = 0;
+
+    let output = this.formatStatements(program.statements);
+
+    // Print remaining comments
+    output += this.printRemainingComments();
+
+    return output.trim() + "\n";
+  }
+
+  private printCommentsBefore(line: number): string {
+    let output = "";
+    while (this.currentCommentIndex < this.comments.length) {
+      const comment = this.comments[this.currentCommentIndex];
+      if (comment && comment.line < line) {
+        // Check for gap before comment
+        if (
+          this.lastLineProcessed > 0 &&
+          comment.line > this.lastLineProcessed + 1
+        ) {
+          output += "\n";
+        }
+
+        const indent = this.getIndent();
+        output += `${indent}${comment.lexeme}\n`;
+
+        // Update lastLineProcessed
+        // Estimate comment height based on newlines in lexeme
+        const lines = comment.lexeme.split("\n").length;
+        this.lastLineProcessed = comment.line + lines - 1;
+
+        this.currentCommentIndex++;
+      } else {
+        break;
+      }
+    }
+    return output;
+  }
+
+  private getInlineComment(line: number): string {
+    // Check if there's a comment on the same line
+    if (this.currentCommentIndex < this.comments.length) {
+      const comment = this.comments[this.currentCommentIndex];
+      if (comment && comment.line === line) {
+        this.currentCommentIndex++;
+        return ` ${comment.lexeme}`;
+      }
+    }
+    return "";
+  }
+
+  private printRemainingComments(): string {
+    let output = "";
+    while (this.currentCommentIndex < this.comments.length) {
+      const comment = this.comments[this.currentCommentIndex];
+      if (comment) {
+        const indent = this.getIndent();
+        output += `\n${indent}${comment.lexeme}`;
+      }
+      this.currentCommentIndex++;
+    }
+    return output;
+  }
+
+  private formatStatements(statements: AST.Statement[]): string {
+    let output = "";
+    for (const stmt of statements) {
+      if (stmt.kind === "Import" && (stmt as AST.ImportStmt).isImplicit) {
+        continue;
+      }
+
+      output += this.printCommentsBefore(stmt.location.startLine);
+
+      // Check for gap before statement (after comments)
+      if (
+        this.lastLineProcessed > 0 &&
+        stmt.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      const formatted = this.formatStatement(stmt);
+      const inlineComment = this.getInlineComment(stmt.location.endLine);
+      output += formatted + inlineComment;
+      output += "\n";
+
+      this.lastLineProcessed = stmt.location.endLine;
+    }
+    return output;
+  }
+
+  private formatStatement(stmt: AST.Statement): string {
+    const indent = this.getIndent();
+    switch (stmt.kind) {
+      case "VariableDecl":
+        return this.formatVariableDecl(stmt as AST.VariableDecl);
+      case "FunctionDecl":
+        return this.formatFunctionDecl(stmt as AST.FunctionDecl);
+      case "StructDecl":
+        return this.formatStructDecl(stmt as AST.StructDecl);
+      case "EnumDecl":
+        return this.formatEnumDecl(stmt as AST.EnumDecl);
+      case "SpecDecl":
+        return this.formatSpecDecl(stmt as AST.SpecDecl);
+      case "TypeAlias":
+        return this.formatTypeAlias(stmt as AST.TypeAliasDecl);
+      case "Import":
+        return this.formatImport(stmt as AST.ImportStmt);
+      case "Export":
+        return this.formatExport(stmt as AST.ExportStmt);
+      case "Extern":
+        return this.formatExtern(stmt as AST.ExternDecl);
+      case "Asm":
+        return this.formatAsm(stmt as AST.AsmBlockStmt);
+      case "If":
+        return this.formatIf(stmt as AST.IfStmt);
+      case "Loop":
+        return this.formatLoop(stmt as AST.LoopStmt);
+      case "Return":
+        return this.formatReturn(stmt as AST.ReturnStmt);
+      case "Break":
+        return `${indent}break;`;
+      case "Continue":
+        return `${indent}continue;`;
+      case "Defer":
+        return this.formatDefer(stmt as AST.DeferStmt);
+      case "Block":
+        return this.formatBlock(stmt as AST.BlockStmt);
+      case "Try":
+        return this.formatTry(stmt as AST.TryStmt);
+      case "Throw":
+        return this.formatThrow(stmt as AST.ThrowStmt);
+      case "Switch":
+        return this.formatSwitch(stmt as AST.SwitchStmt);
+      case "Fallthrough":
+        return `${indent}fallthrough;`;
+      case "ExpressionStmt":
+        return `${indent}${this.formatExpression((stmt as AST.ExpressionStmt).expression)};`;
+      default:
+        return `${indent}// Unknown statement kind: ${(stmt as any).kind}`;
+    }
+  }
+
+  private formatVariableDecl(decl: AST.VariableDecl): string {
+    const indent = this.getIndent();
+    const keyword = decl.isGlobal ? "global" : "local";
+    let output = `${indent}${keyword} `;
+
+    if (decl.isConst) {
+      output += "const ";
+    }
+
+    if (typeof decl.name === "string") {
+      output += decl.name;
+      if (decl.typeAnnotation) {
+        output += `: ${this.formatType(decl.typeAnnotation)}`;
+      }
+    } else {
+      // Destructuring (may be nested)
+      output += this.formatDestructPattern(decl.name);
+    }
+
+    if (decl.initializer) {
+      output += ` = ${this.formatExpression(decl.initializer)}`;
+    }
+
+    output += ";";
+    return output;
+  }
+
+  private formatDestructPattern(pattern: AST.DestructuringPattern): string {
+    if (Array.isArray(pattern)) {
+      // Nested array or list of targets
+      return `(${pattern
+        .map((item) => {
+          if (Array.isArray(item)) {
+            // Nested destructuring
+            return this.formatDestructPattern(item);
+          } else if (typeof item === "object" && "name" in item) {
+            // Single target
+            return `${item.name}${item.type ? `: ${this.formatType(item.type)}` : ""}`;
+          }
+          return "";
+        })
+        .join(", ")})`;
+    }
+    // Single target
+    if (typeof pattern === "object" && "name" in pattern) {
+      return `${pattern.name}${pattern.type ? `: ${this.formatType(pattern.type)}` : ""}`;
+    }
+    return "";
+  }
+
+  private formatFunctionDecl(decl: AST.FunctionDecl): string {
+    const indent = this.getIndent();
+    let output = `${indent}frame ${decl.name}`;
+
+    output += this.formatGenericParams(decl.genericParams);
+
+    output += "(";
+    output += decl.params
+      .map((p) => {
+        const typeStr = this.formatType(p.type);
+        const prefix = p.isVariadic ? "..." : "";
+        const constPrefix = p.isConst ? "const " : "";
+        return `${constPrefix}${p.name}: ${prefix}${typeStr}`;
+      })
+      .join(", ");
+    output += ")";
+
+    if (
+      decl.returnType &&
+      (decl.returnType.kind !== "BasicType" ||
+        decl.returnType.name !== "void" ||
+        (decl.returnType.name === "void" && decl.returnType.pointerDepth !== 0))
+    ) {
+      output += ` ret ${this.formatType(decl.returnType)}`;
+    }
+
+    output += " ";
+    output += this.formatBlock(decl.body, false); // Block handles indentation
+    return output;
+  }
+
+  private formatStructDecl(decl: AST.StructDecl): string {
+    const indent = this.getIndent();
+    let output = `${indent}struct ${decl.name}`;
+
+    output += this.formatGenericParams(decl.genericParams);
+
+    if (decl.inheritanceList && decl.inheritanceList.length > 0) {
+      output += `: ${decl.inheritanceList.map((t) => this.formatType(t)).join(", ")}`;
+    }
+
+    output += " {\n";
+    this.indentLevel++;
+
+    this.lastLineProcessed = decl.location.startLine;
+
+    for (const member of decl.members) {
+      // Print comments before member
+      output += this.printCommentsBefore(member.location.startLine);
+
+      if (
+        this.lastLineProcessed > 0 &&
+        member.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      if (member.kind === "StructField") {
+        output += `${this.getIndent()}${member.name}: ${this.formatType(member.type)},\n`;
+      } else if (member.kind === "FunctionDecl") {
+        output += this.formatFunctionDecl(member as AST.FunctionDecl) + "\n";
+      }
+
+      this.lastLineProcessed = member.location.endLine;
+    }
+
+    // Print comments inside struct (before closing brace)
+    output += this.printCommentsBefore(decl.location.endLine);
+
+    this.indentLevel--;
+    output += `${indent}}`;
+    return output;
+  }
+
+  private formatEnumDecl(decl: AST.EnumDecl): string {
+    const indent = this.getIndent();
+    let output = `${indent}enum ${decl.name}`;
+
+    output += this.formatGenericParams(decl.genericParams);
+
+    output += " {\n";
+    this.indentLevel++;
+
+    this.lastLineProcessed = decl.location.startLine;
+
+    // Format variants
+    for (let i = 0; i < decl.variants.length; i++) {
+      const variant = decl.variants[i]!;
+
+      // Print comments before variant (on same or previous line)
+      const commentsBefore = this.printCommentsBefore(
+        variant.location.startLine,
+      );
+      if (commentsBefore) {
+        output += commentsBefore;
+      }
+
+      // Add blank line if there's a gap in source
+      if (
+        this.lastLineProcessed > 0 &&
+        variant.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      output += `${this.getIndent()}${variant.name}`;
+
+      // Format variant data if present
+      if (variant.dataType) {
+        if (variant.dataType.kind === "EnumVariantTuple") {
+          const tupleData = variant.dataType as AST.EnumVariantTuple;
+          output += "(";
+          output += tupleData.types.map((t) => this.formatType(t)).join(", ");
+          output += ")";
+        } else if (variant.dataType.kind === "EnumVariantStruct") {
+          const structData = variant.dataType as AST.EnumVariantStruct;
+          output += " { ";
+          output += structData.fields
+            .map((f) => `${f.name}: ${this.formatType(f.type)}`)
+            .join(", ");
+          output += " }";
+        }
+      }
+
+      output += ",";
+
+      // Print inline comments (on same line as variant)
+      const inlineComment = this.getInlineComment(variant.location.endLine);
+      if (inlineComment) {
+        output += inlineComment;
+      }
+
+      output += "\n";
+
+      this.lastLineProcessed = variant.location.endLine;
+    }
+
+    // Format enum methods
+    if (decl.methods && decl.methods.length > 0) {
+      for (let i = 0; i < decl.methods.length; i++) {
+        const method = decl.methods[i]!;
+
+        // Print comments before method (which handles gap detection)
+        const commentsBefore = this.printCommentsBefore(
+          method.location.startLine,
+        );
+        if (commentsBefore) {
+          output += commentsBefore;
+        } else if (i === 0) {
+          // If no comments and this is the first method, add separator
+          output += "\n";
+        } else if (method.location.startLine > this.lastLineProcessed + 1) {
+          // Gap between methods
+          output += "\n";
+        }
+
+        // Format the method
+        output += this.formatFunctionDecl(method);
+        output += "\n";
+
+        this.lastLineProcessed = method.location.endLine;
+      }
+    }
+
+    // Print comments inside enum (before closing brace)
+    const finalComments = this.printCommentsBefore(decl.location.endLine);
+    if (finalComments && !finalComments.match(/^\s*$/)) {
+      output += finalComments;
+    }
+
+    this.indentLevel--;
+    output += `${indent}}`;
+    return output;
+  }
+
+  private formatSpecDecl(decl: AST.SpecDecl): string {
+    const indent = this.getIndent();
+    let output = `${indent}spec ${decl.name}`;
+
+    output += this.formatGenericParams(decl.genericParams);
+
+    if (decl.extends && decl.extends.length > 0) {
+      output += `: ${decl.extends.map((t) => this.formatType(t)).join(", ")}`;
+    }
+
+    output += " {\n";
+    this.indentLevel++;
+
+    this.lastLineProcessed = decl.location.startLine;
+
+    for (const method of decl.methods) {
+      // Print comments before method
+      output += this.printCommentsBefore(method.location.startLine);
+
+      if (
+        this.lastLineProcessed > 0 &&
+        method.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      output += this.formatSpecMethod(method) + "\n";
+
+      this.lastLineProcessed = method.location.endLine;
+    }
+
+    // Print comments inside spec (before closing brace)
+    output += this.printCommentsBefore(decl.location.endLine);
+
+    this.indentLevel--;
+    output += `${indent}}`;
+    return output;
+  }
+
+  private formatSpecMethod(method: AST.SpecMethod): string {
+    const indent = this.getIndent();
+    let output = `${indent}frame ${method.name}`;
+
+    output += this.formatGenericParams(method.genericParams);
+
+    output += "(";
+    output += method.params
+      .map((p) => {
+        const typeStr = this.formatType(p.type);
+        return p.isConst
+          ? `const ${p.name}: ${typeStr}`
+          : `${p.name}: ${typeStr}`;
+      })
+      .join(", ");
+    output += ")";
+
+    if (
+      method.returnType &&
+      (method.returnType.kind !== "BasicType" ||
+        method.returnType.name !== "void" ||
+        (method.returnType.name === "void" &&
+          method.returnType.pointerDepth !== 0))
+    ) {
+      output += ` ret ${this.formatType(method.returnType)}`;
+    }
+
+    output += ";";
+    return output;
+  }
+
+  private formatTypeAlias(decl: AST.TypeAliasDecl): string {
+    const indent = this.getIndent();
+    let output = `${indent}type ${decl.name}`;
+
+    output += this.formatGenericParams(decl.genericParams);
+
+    output += ` = ${this.formatType(decl.type)};`;
+    return output;
+  }
+
+  private formatImport(stmt: AST.ImportStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}import `;
+
+    if (stmt.importAll) {
+      output += "*";
+      if (stmt.namespace) {
+        output += ` as ${stmt.namespace}`;
+      }
+    } else {
+      const items = stmt.items
+        .map((item) => {
+          let s = "";
+          if (item.isType) {
+            s = `[${item.name}]`;
+          } else if (item.isWrapped) {
+            s = `{${item.name}}`;
+          } else {
+            s = item.name;
+          }
+
+          if (item.alias) s += ` as ${item.alias}`;
+          return s;
+        })
+        .join(", ");
+      output += `${items}`;
+    }
+
+    output += ` from "${stmt.source}";`;
+    return output;
+  }
+
+  private formatExport(stmt: AST.ExportStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}export `;
+
+    if (stmt.items.length > 0) {
+      const item = stmt.items[0]!;
+      if (item.isType) {
+        output += `[${item.name}]`;
+      } else if (item.isWrapped) {
+        output += `{${item.name}}`;
+      } else {
+        output += item.name;
+      }
+    }
+
+    output += ";";
+    return output;
+  }
+
+  private formatExtern(decl: AST.ExternDecl): string {
+    const indent = this.getIndent();
+    let output = `${indent}extern ${decl.name}(`;
+
+    output += decl.params
+      .map((p) => `${p.name}: ${this.formatType(p.type)}`)
+      .join(", ");
+
+    if (decl.isVariadic) {
+      if (decl.params.length > 0) output += ", ";
+      output += "...";
+    }
+
+    output += ")";
+
+    if (decl.returnType) {
+      output += ` ret ${this.formatType(decl.returnType)}`;
+    }
+
+    output += ";";
+    return output;
+  }
+
+  private formatAsm(stmt: AST.AsmBlockStmt): string {
+    const indent = this.getIndent();
+    const flavor = stmt.flavor ? `("${stmt.flavor}")` : "";
+    let content = stmt.content;
+
+    // Skip comments that are inside the asm block to avoid duplication
+    while (this.currentCommentIndex < this.comments.length) {
+      const c = this.comments[this.currentCommentIndex];
+      if (!c) break;
+      if (c.line < stmt.location.endLine) {
+        this.currentCommentIndex++;
+      } else if (
+        c.line === stmt.location.endLine &&
+        c.column < stmt.location.endColumn
+      ) {
+        this.currentCommentIndex++;
+      } else {
+        break;
+      }
+    }
+
+    // Re-indent content
+    const lines = content.split("\n");
+    // Remove first empty line if it exists (common case: asm { \n ...)
+    if (lines.length > 0 && lines[0]!.trim() === "") {
+      lines.shift();
+    }
+    // Remove last empty line if it exists (common case: ... \n })
+    if (lines.length > 0 && lines[lines.length - 1]!.trim() === "") {
+      lines.pop();
+    }
+
+    if (lines.length > 0) {
+      // Find minimum indentation
+      let minIndent = Infinity;
+      for (const line of lines) {
+        if (line.trim().length === 0) continue;
+        const match = line.match(/^(\s*)/);
+        if (match) {
+          minIndent = Math.min(minIndent, match[1]!.length);
+        }
+      }
+      if (minIndent === Infinity) minIndent = 0;
+
+      // Re-indent
+      this.indentLevel++;
+      const innerIndent = this.getIndent();
+      this.indentLevel--;
+
+      content =
+        "\n" +
+        lines
+          .map((line) => {
+            if (line.trim().length === 0) return "";
+            return innerIndent + line.substring(minIndent);
+          })
+          .join("\n");
+    } else {
+      content = "";
+    }
+
+    if (stmt.clobbers && stmt.clobbers.length > 0) {
+      if (content.length > 0) {
+        content += "\n";
+      } else {
+        content = "\n";
+      }
+
+      this.indentLevel++;
+      const innerIndent = this.getIndent();
+      this.indentLevel--;
+
+      const clobberStr = `[ ${stmt.clobbers.map((c) => `"${c}"`).join(", ")} ]`;
+      content += `${innerIndent}${clobberStr}`;
+    }
+
+    if (content.length > 0) {
+      content += `\n${indent}`;
+    }
+
+    return `${indent}asm${flavor} {${content}}`;
+  }
+
+  private formatIf(stmt: AST.IfStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}if (${this.formatExpression(this.unwrapGroup(stmt.condition))}) `;
+
+    if (stmt.thenBranch.kind === "Block") {
+      output += this.formatBlock(stmt.thenBranch as AST.BlockStmt, false);
+    } else {
+      output += "\n";
+      this.indentLevel++;
+      output += this.formatStatement(stmt.thenBranch);
+      this.indentLevel--;
+    }
+
+    if (stmt.elseBranch) {
+      if (stmt.thenBranch.kind === "Block") {
+        output += " else ";
+      } else {
+        output += `\n${indent}else `;
+      }
+
+      if (stmt.elseBranch.kind === "If") {
+        // Else if
+        // We need to trim the indentation of the nested if
+        const elseIf = this.formatIf(stmt.elseBranch as AST.IfStmt).trim();
+        output += elseIf;
+      } else if (stmt.elseBranch.kind === "Block") {
+        output += this.formatBlock(stmt.elseBranch as AST.BlockStmt, false);
+      } else {
+        // Single statement else
+        output += "\n";
+        this.indentLevel++;
+        output += this.formatStatement(stmt.elseBranch);
+        this.indentLevel--;
+      }
+    }
+
+    return output;
+  }
+
+  private formatLoop(stmt: AST.LoopStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}loop`;
+
+    if (stmt.isCStyle || stmt.init || stmt.step) {
+      output += " (";
+      if (stmt.init) {
+        // Temporarily disable indentation for init statement
+        const oldIndent = this.indentLevel;
+        this.indentLevel = 0;
+        // We need to handle comments carefully, but for now assume simple init
+        const initStr = this.formatStatement(stmt.init).trim();
+        this.indentLevel = oldIndent;
+        output += initStr;
+      } else {
+        output += ";";
+      }
+
+      output += " ";
+
+      if (stmt.condition) {
+        output += this.formatExpression(this.unwrapGroup(stmt.condition));
+      }
+
+      output += "; ";
+
+      if (stmt.step) {
+        output += this.formatExpression(this.unwrapGroup(stmt.step));
+      } else if (output.endsWith(" ")) {
+        // If no step, remove the trailing space if it exists
+        output = output.slice(0, -1);
+      }
+
+      // If both condition and step are missing, we might have "; ;" which looks weird.
+      // We want ";;" if possible, or "; ;" if that's preferred.
+      // Currently it produces "; ;" because of the space after the first semicolon.
+      // If we want (;;), we need to remove the space after the first semicolon if condition is missing.
+      if (!stmt.condition && !stmt.step) {
+        // output ends with ";;" now because we removed the trailing space above
+        // But wait, we added "; " before step.
+        // Let's trace:
+        // init -> ";"
+        // " " -> "; "
+        // cond missing -> "; "
+        // "; " -> "; ; "
+        // step missing -> remove trailing space -> "; ;"
+
+        // If we want (;;), we should check if we can collapse spaces.
+        if (output.endsWith("; ;")) {
+          output = output.slice(0, -3) + ";;";
+        }
+      }
+
+      output += ")";
+    } else if (stmt.condition) {
+      output += ` (${this.formatExpression(this.unwrapGroup(stmt.condition))})`;
+    }
+    output += " ";
+
+    if (stmt.body.kind === "Block") {
+      output += this.formatBlock(stmt.body as AST.BlockStmt, false);
+    } else {
+      output += "\n";
+      this.indentLevel++;
+      output += this.formatStatement(stmt.body);
+      this.indentLevel--;
+    }
+    return output;
+  }
+
+  private formatReturn(stmt: AST.ReturnStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}return`;
+    if (stmt.value) {
+      output += ` ${this.formatExpression(stmt.value)}`;
+    }
+    output += ";";
+    return output;
+  }
+
+  private formatBlock(
+    stmt: AST.BlockStmt,
+    indentFirstLine: boolean = true,
+  ): string {
+    let output = "";
+    if (indentFirstLine) {
+      output += this.getIndent();
+    }
+    output += "{\n";
+    this.indentLevel++;
+
+    // Update lastLineProcessed to the start of the block so inner statements
+    // don't get extra padding relative to the opening brace.
+    this.lastLineProcessed = stmt.location.startLine;
+
+    output += this.formatStatements(stmt.statements);
+
+    // Print comments inside the block (before the closing brace)
+    output += this.printCommentsBefore(stmt.location.endLine);
+
+    this.indentLevel--;
+    output += `${this.getIndent()}}`;
+    return output;
+  }
+
+  private formatTry(stmt: AST.TryStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}try `;
+    output += this.formatBlock(stmt.tryBlock, false);
+
+    for (const clause of stmt.catchClauses) {
+      if (clause.variable && clause.type) {
+        // Typed catch: catch (e: Type) { }
+        output += ` catch (${clause.variable}: ${this.formatType(clause.type)}) `;
+      } else {
+        // Catch-all: catch { }
+        output += ` catch `;
+      }
+      output += this.formatBlock(clause.body, false);
+    }
+
+    return output;
+  }
+
+  private formatThrow(stmt: AST.ThrowStmt): string {
+    const indent = this.getIndent();
+    return `${indent}throw ${this.formatExpression(stmt.expression)};`;
+  }
+
+  private formatDefer(stmt: AST.DeferStmt): string {
+    const indent = this.getIndent();
+    if (stmt.statement.kind === "Block") {
+      return `${indent}defer ${this.formatBlock(stmt.statement as AST.BlockStmt, false)}`;
+    }
+    const inner = this.formatStatement(stmt.statement).trimStart();
+    return `${indent}defer ${inner}`;
+  }
+
+  private formatSwitch(stmt: AST.SwitchStmt): string {
+    const indent = this.getIndent();
+    let output = `${indent}switch (${this.formatExpression(this.unwrapGroup(stmt.expression))}) {\n`;
+    this.indentLevel++;
+
+    this.lastLineProcessed = stmt.location.startLine;
+
+    const formatBody = (body: AST.BlockStmt, headerLine: number): string => {
+      if (body.synthesized) {
+        if (body.statements.length === 0) {
+          return "";
+        }
+
+        const firstStmt = body.statements[0]!;
+        const isSameLine = firstStmt.location.startLine === headerLine;
+
+        if (body.statements.length === 1 && isSameLine) {
+          const stmtStr = this.formatStatement(firstStmt).trimStart();
+          const inlineComment = this.getInlineComment(
+            firstStmt.location.endLine,
+          );
+          return " " + stmtStr + inlineComment;
+        }
+        this.indentLevel++;
+        this.lastLineProcessed = headerLine;
+        const s = "\n" + this.formatStatements(body.statements);
+        this.indentLevel--;
+        return s.trimEnd();
+      }
+      return ` ${this.formatBlock(body, false)}`;
+    };
+
+    for (const kase of stmt.cases) {
+      output += this.printCommentsBefore(kase.location.startLine);
+
+      if (
+        this.lastLineProcessed > 0 &&
+        kase.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      output += `${this.getIndent()}case ${this.formatExpression(kase.value)}:`;
+      output += formatBody(kase.body, kase.location.startLine);
+      output += "\n";
+
+      this.lastLineProcessed = kase.body.location.endLine;
+    }
+
+    if (stmt.defaultCase) {
+      // Default case doesn't have explicit location in AST usually, but block does
+      output += this.printCommentsBefore(stmt.defaultCase.location.startLine);
+
+      if (
+        this.lastLineProcessed > 0 &&
+        stmt.defaultCase.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      output += `${this.getIndent()}default:`;
+      output += formatBody(
+        stmt.defaultCase,
+        stmt.defaultCase.location.startLine,
+      );
+      output += "\n";
+
+      this.lastLineProcessed = stmt.defaultCase.location.endLine;
+    }
+
+    output += this.printCommentsBefore(stmt.location.endLine);
+
+    this.indentLevel--;
+    output += `${indent}}`;
+    return output;
+  }
+
+  // --- Expressions ---
+
+  private unwrapGroup(expr: AST.Expression): AST.Expression {
+    let current = expr;
+    while (current.kind === "Group") {
+      current = (current as AST.GroupExpr).expression;
+    }
+    return current;
+  }
+
+  private formatExpression(expr: AST.Expression): string {
+    switch (expr.kind) {
+      case "Literal":
+        return this.formatLiteral(expr as AST.LiteralExpr);
+      case "InterpolatedString":
+        return this.formatInterpolatedString(
+          expr as AST.InterpolatedStringExpr,
+        );
+      case "Identifier":
+        return (expr as AST.IdentifierExpr).name;
+      case "Binary":
+        return this.formatBinary(expr as AST.BinaryExpr);
+      case "Unary":
+        return this.formatUnary(expr as AST.UnaryExpr);
+      case "Call":
+        return this.formatCall(expr as AST.CallExpr);
+      case "Member":
+        return this.formatMember(expr as AST.MemberExpr);
+      case "Index":
+        return this.formatIndex(expr as AST.IndexExpr);
+      case "Assignment":
+        return this.formatAssignment(expr as AST.AssignmentExpr);
+      case "Ternary":
+        return this.formatTernary(expr as AST.TernaryExpr);
+      case "Cast":
+        return this.formatCast(expr as AST.CastExpr);
+      case "Sizeof":
+        return this.formatSizeof(expr as AST.SizeofExpr);
+      case "OffsetOf":
+        return this.formatOffsetOf(expr as AST.OffsetOfExpr);
+      case "TypeOf":
+        return this.formatTypeOf(expr as AST.TypeOfExpr);
+      case "Match":
+        return this.formatMatchExpr(expr as AST.MatchExpr);
+      case "TypeMatch":
+        return this.formatTypeMatch(expr as AST.TypeMatchExpr);
+      case "ArrayLiteral":
+        return this.formatArrayLiteral(expr as AST.ArrayLiteralExpr);
+      case "StructLiteral":
+        return this.formatStructLiteral(expr as AST.StructLiteralExpr);
+      case "TupleLiteral":
+        return this.formatTupleLiteral(expr as AST.TupleLiteralExpr);
+      case "EnumStructVariant":
+        return this.formatEnumStructVariant(expr as AST.EnumStructVariantExpr);
+      case "GenericInstantiation":
+        return this.formatGenericInstantiation(
+          expr as AST.GenericInstantiationExpr,
+        );
+      case "LambdaExpression":
+        return this.formatLambda(expr as AST.LambdaExpr);
+      case "Is":
+        return this.formatIs(expr as AST.IsExpr);
+      case "As":
+        return this.formatAs(expr as AST.AsExpr);
+      case "Group":
+        return `(${this.formatExpression(expr.expression)})`;
+      default:
+        return `/* Unknown expr: ${(expr as AST.Expression).kind} */`;
+    }
+  }
+
+  private formatIs(expr: AST.IsExpr): string {
+    const left = this.formatExpression(expr.expression);
+    const right = this.formatType(expr.type);
+
+    // Check if left operand needs parentheses
+    if (expr.expression.kind === "Binary") {
+      const op = (expr.expression as AST.BinaryExpr).operator.lexeme;
+      const prec = this.getPrecedence(op);
+      // 'is' has precedence 7. If left op has lower precedence, wrap it.
+      if (prec < 7) {
+        return `(${left}) is ${right}`;
+      }
+    }
+    return `${left} is ${right}`;
+  }
+
+  private formatAs(expr: AST.AsExpr): string {
+    const left = this.formatExpression(expr.expression);
+    const right = this.formatType(expr.type);
+
+    // Check if left operand needs parentheses
+    if (expr.expression.kind === "Binary") {
+      const op = (expr.expression as AST.BinaryExpr).operator.lexeme;
+      const prec = this.getPrecedence(op);
+      // 'as' has precedence 7. If left op has lower precedence, wrap it.
+      if (prec < 7) {
+        return `(${left}) as ${right}`;
+      }
+    }
+    return `${left} as ${right}`;
+  }
+
+  private formatLiteral(expr: AST.LiteralExpr): string {
+    // Preserve original literal lexeme to avoid changing escapes
+    return expr.raw;
+  }
+
+  private formatInterpolatedString(expr: AST.InterpolatedStringExpr): string {
+    let output = "`";
+    for (const part of expr.parts) {
+      if (
+        part.kind === "Literal" &&
+        (part as AST.LiteralExpr).type === "string"
+      ) {
+        // It's a string part
+        const val = (part as AST.LiteralExpr).value as string;
+        // Escape special characters for interpolated string
+        output += this.escapeInterpolatedStringPart(val);
+      } else {
+        // It's an expression
+        output += `\${${this.formatExpression(part)}}`;
+      }
+    }
+    output += "`";
+    return output;
+  }
+
+  private escapeInterpolatedStringPart(s: string): string {
+    return s
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\${/g, "\\${")
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/\t/g, "\\t");
+  }
+
+  private formatBinary(expr: AST.BinaryExpr): string {
+    const op = expr.operator.lexeme;
+    const prec = this.getPrecedence(op);
+
+    const left = expr.left;
+    const right = expr.right;
+
+    let leftStr = this.formatExpression(left);
+    let rightStr = this.formatExpression(right);
+
+    // Always parenthesize ternary when nested inside binary
+    if (left.kind === "Ternary") leftStr = `(${leftStr})`;
+    if (right.kind === "Ternary") rightStr = `(${rightStr})`;
+
+    // Add parentheses when child binary has lower or equal precedence that could alter grouping
+    if (left.kind === "Binary") {
+      const childOp = (left as AST.BinaryExpr).operator.lexeme;
+      const childPrec = this.getPrecedence(childOp);
+      if (
+        childPrec < prec ||
+        this.requiresParenForEqualPrecedence(childOp, op, true) ||
+        this.parenthesizeBitwiseInsideComparison(childOp, op)
+      ) {
+        leftStr = `(${leftStr})`;
+      }
+    }
+
+    if (right.kind === "Binary") {
+      const childOp = (right as AST.BinaryExpr).operator.lexeme;
+      const childPrec = this.getPrecedence(childOp);
+      if (
+        childPrec < prec ||
+        this.requiresParenForEqualPrecedence(childOp, op, false) ||
+        this.parenthesizeBitwiseInsideComparison(childOp, op)
+      ) {
+        rightStr = `(${rightStr})`;
+      }
+    }
+
+    return `${leftStr} ${op} ${rightStr}`;
+  }
+
+  private formatUnary(expr: AST.UnaryExpr): string {
+    const operandIsComplex =
+      expr.operand.kind === "Binary" || expr.operand.kind === "Ternary";
+    const operandStr = this.formatExpression(expr.operand);
+    const wrappedOperand = operandIsComplex ? `(${operandStr})` : operandStr;
+    if (expr.isPrefix) {
+      return `${expr.operator.lexeme}${wrappedOperand}`;
+    }
+    return `${wrappedOperand}${expr.operator.lexeme}`;
+  }
+
+  private formatCall(expr: AST.CallExpr): string {
+    let output = this.formatExpression(expr.callee);
+    if (expr.genericArgs.length > 0) {
+      output += `<${expr.genericArgs.map((t) => this.formatType(t)).join(", ")}>`;
+    }
+    output += "(";
+    output += expr.args.map((a) => this.formatExpression(a)).join(", ");
+    output += ")";
+    return output;
+  }
+
+  private formatMember(expr: AST.MemberExpr): string {
+    return `${this.formatExpression(expr.object)}.${expr.property}`;
+  }
+
+  private formatIndex(expr: AST.IndexExpr): string {
+    return `${this.formatExpression(expr.object)}[${this.formatExpression(expr.index)}]`;
+  }
+
+  private formatAssignment(expr: AST.AssignmentExpr): string {
+    return `${this.formatExpression(expr.assignee)} ${expr.operator.lexeme} ${this.formatExpression(
+      expr.value,
+    )}`;
+  }
+
+  private formatTernary(expr: AST.TernaryExpr): string {
+    return `${this.formatExpression(expr.condition)} ? ${this.formatExpression(
+      expr.trueExpr,
+    )} : ${this.formatExpression(expr.falseExpr)}`;
+  }
+
+  private formatCast(expr: AST.CastExpr): string {
+    return `cast<${this.formatType(expr.targetType)}>(${this.formatExpression(expr.expression)})`;
+  }
+
+  private formatSizeof(expr: AST.SizeofExpr): string {
+    const target = expr.target as AST.ASTNode;
+    if (
+      target.kind === "BasicType" ||
+      target.kind === "TupleType" ||
+      target.kind === "FunctionType" ||
+      target.kind === "LambdaType" ||
+      target.kind === "MetaType"
+    ) {
+      return `sizeof<${this.formatType(target as AST.TypeNode)}>()`;
+    }
+    return `sizeof(${this.formatExpression(target as AST.Expression)})`;
+  }
+
+  private formatTypeOf(expr: AST.TypeOfExpr): string {
+    const target = expr.target as AST.ASTNode;
+    if (
+      target.kind === "BasicType" ||
+      target.kind === "TupleType" ||
+      target.kind === "FunctionType" ||
+      target.kind === "LambdaType" ||
+      target.kind === "MetaType"
+    ) {
+      return `typeof<${this.formatType(target as AST.TypeNode)}>()`;
+    }
+    return `typeof(${this.formatExpression(target as AST.Expression)})`;
+  }
+
+  private formatOffsetOf(expr: AST.OffsetOfExpr): string {
+    return `offsetof(${this.formatType(expr.targetType)}, ${expr.member})`;
+  }
+
+  private formatTypeMatch(expr: AST.TypeMatchExpr): string {
+    return `match<${this.formatType(expr.targetType)}>(${this.formatExpression(
+      expr.value as AST.Expression,
+    )})`;
+  }
+
+  private formatMatchExpr(expr: AST.MatchExpr): string {
+    let output = `match (${this.formatExpression(expr.value)}) {\n`;
+    this.indentLevel++;
+
+    this.lastLineProcessed = expr.location.startLine;
+
+    for (let i = 0; i < expr.arms.length; i++) {
+      const arm = expr.arms[i]!;
+
+      // Print comments before this arm
+      const commentsBefore = this.printCommentsBefore(arm.location.startLine);
+      if (commentsBefore) {
+        output += commentsBefore;
+      }
+
+      // Add blank line if there's a gap
+      if (
+        this.lastLineProcessed > 0 &&
+        arm.location.startLine > this.lastLineProcessed + 1
+      ) {
+        output += "\n";
+      }
+
+      output += `${this.getIndent()}${this.formatPattern(arm.pattern)}`;
+
+      if (arm.guard) {
+        output += ` if ${this.formatExpression(arm.guard)}`;
+      }
+
+      output += " => ";
+
+      // Format the body
+      if (arm.body.kind === "Block") {
+        output += this.formatBlock(arm.body as AST.BlockStmt, false);
+      } else {
+        output += this.formatExpression(arm.body as AST.Expression);
+      }
+
+      output += ",";
+
+      // Print inline comments (on same line as arm)
+      const inlineComment = this.getInlineComment(arm.location.endLine);
+      if (inlineComment) {
+        output += inlineComment;
+      }
+
+      output += "\n";
+
+      this.lastLineProcessed = arm.location.endLine;
+    }
+
+    // Print any remaining comments before closing brace
+    const finalComments = this.printCommentsBefore(expr.location.endLine);
+    if (finalComments && !finalComments.match(/^\s*$/)) {
+      output += finalComments;
+    }
+
+    this.indentLevel--;
+    output += `${this.getIndent()}}`;
+    return output;
+  }
+
+  private formatPattern(pattern: AST.Pattern): string {
+    switch (pattern.kind) {
+      case "PatternWildcard":
+        return "_";
+
+      case "PatternLiteral":
+        return this.formatLiteral((pattern as AST.PatternLiteral).value);
+
+      case "PatternIdentifier":
+        return (pattern as AST.PatternIdentifier).name;
+
+      case "PatternEnum": {
+        const p = pattern as AST.PatternEnum;
+        let enumName = p.enumName;
+        if (p.genericArgs && p.genericArgs.length > 0) {
+          enumName += `<${p.genericArgs.map((t) => this.formatType(t)).join(", ")}>`;
+        }
+        if (enumName.length > 0) {
+          return `${enumName}.${p.variantName}`;
+        }
+        return p.variantName;
+      }
+
+      case "PatternEnumTuple": {
+        const p = pattern as AST.PatternEnumTuple;
+        let enumName = p.enumName;
+        if (p.genericArgs && p.genericArgs.length > 0) {
+          enumName += `<${p.genericArgs.map((t) => this.formatType(t)).join(", ")}>`;
+        }
+        const bindings = `(${p.bindings.map((b) => this.formatPattern(b)).join(", ")})`;
+        if (enumName.length > 0) {
+          return `${enumName}.${p.variantName}${bindings}`;
+        }
+        return `${p.variantName}${bindings}`;
+      }
+
+      case "PatternEnumStruct": {
+        const p = pattern as AST.PatternEnumStruct;
+        let enumName = p.enumName;
+        if (p.genericArgs && p.genericArgs.length > 0) {
+          enumName += `<${p.genericArgs.map((t) => this.formatType(t)).join(", ")}>`;
+        }
+        const fields = p.fields
+          .map((f) => `${f.fieldName}: ${f.binding}`)
+          .join(", ");
+        if (enumName.length > 0) {
+          return `${enumName}.${p.variantName} { ${fields} }`;
+        }
+        return `${p.variantName} { ${fields} }`;
+      }
+
+      case "PatternTuple": {
+        const p = pattern as AST.PatternTuple;
+        return `(${p.patterns.map((pat) => this.formatPattern(pat)).join(", ")})`;
+      }
+
+      default:
+        return "/* unknown pattern */";
+    }
+  }
+
+  private formatArrayLiteral(expr: AST.ArrayLiteralExpr): string {
+    return `[${expr.elements.map((e) => this.formatExpression(e)).join(", ")}]`;
+  }
+
+  private formatStructLiteral(expr: AST.StructLiteralExpr): string {
+    let output = `${expr.structName}`;
+    if (expr.genericArgs && expr.genericArgs.length > 0) {
+      output += `<${expr.genericArgs.map((t) => this.formatType(t)).join(", ")}>`;
+    }
+    output += " {";
+    if (expr.fields.length > 0) {
+      output += " ";
+      output += expr.fields
+        .map((f) => `${f.name}: ${this.formatExpression(f.value)}`)
+        .join(", ");
+      output += " ";
+    }
+    output += "}";
+    return output;
+  }
+
+  private formatTupleLiteral(expr: AST.TupleLiteralExpr): string {
+    return `(${expr.elements.map((e) => this.formatExpression(e)).join(", ")})`;
+  }
+
+  private formatEnumStructVariant(expr: AST.EnumStructVariantExpr): string {
+    let output = `${expr.enumName}.${expr.variantName} {`;
+    if (expr.fields.length > 0) {
+      output += " ";
+      output += expr.fields
+        .map((f) => `${f.name}: ${this.formatExpression(f.value)}`)
+        .join(", ");
+      output += " ";
+    }
+    output += "}";
+    return output;
+  }
+
+  private formatLambda(expr: AST.LambdaExpr): string {
+    let output = "|";
+    output += expr.params
+      .map((p) => {
+        let paramStr = p.name;
+        if (p.type) {
+          paramStr += `: ${this.formatType(p.type)}`;
+        }
+        return paramStr;
+      })
+      .join(", ");
+    output += "|";
+
+    if (expr.returnType) {
+      output += ` ret ${this.formatType(expr.returnType)}`;
+    }
+
+    output += " ";
+    output += this.formatBlock(expr.body, false);
+    return output;
+  }
+
+  private formatGenericInstantiation(
+    expr: AST.GenericInstantiationExpr,
+  ): string {
+    return `${this.formatExpression(expr.base)}<${expr.genericArgs
+      .map((t) => this.formatType(t))
+      .join(", ")}>`;
+  }
+
+  // --- Types ---
+
+  private formatType(type: AST.TypeNode): string {
+    switch (type.kind) {
+      case "BasicType": {
+        let output = "";
+        if (type.isConst) output += "const ";
+        for (let i = 0; i < type.pointerDepth; i++) output += "*";
+        output += type.name;
+        if (type.genericArgs.length > 0) {
+          output += `<${type.genericArgs.map((t) => this.formatType(t)).join(", ")}>`;
+        }
+        for (const dim of type.arrayDimensions) {
+          output += `[${dim !== null ? dim : ""}]`;
+        }
+        return output;
+      }
+      case "FunctionType": {
+        let func = "";
+        if (type.isConst) func += "const ";
+        func += `Func<${this.formatType(type.returnType)}>(`;
+        func += type.paramTypes.map((t) => this.formatType(t)).join(", ");
+        func += ")";
+        if (type.arrayDimensions) {
+          for (const dim of type.arrayDimensions) {
+            func += `[${dim !== null ? dim : ""}]`;
+          }
+        }
+        return func;
+      }
+      case "LambdaType": {
+        let output = "";
+        if (type.isConst) output += "const ";
+        output += `Lambda<${this.formatType((type as AST.LambdaTypeNode).returnType)}>(`;
+        output += (type as AST.LambdaTypeNode).paramTypes
+          .map((t) => this.formatType(t))
+          .join(", ");
+        output += ")";
+        if (type.arrayDimensions) {
+          for (const dim of type.arrayDimensions) {
+            output += `[${dim !== null ? dim : ""}]`;
+          }
+        }
+        return output;
+      }
+      case "TupleType": {
+        let output = "";
+        if (type.isConst) output += "const ";
+        output += `(${type.types.map((t) => this.formatType(t)).join(", ")})`;
+        if (type.arrayDimensions) {
+          for (const dim of type.arrayDimensions) {
+            output += `[${dim !== null ? dim : ""}]`;
+          }
+        }
+        return output;
+      }
+      default:
+        return "unknown_type";
+    }
+  }
+
+  private getIndent(): string {
+    return this.indentString.repeat(this.indentLevel);
+  }
+
+  // --- Precedence helpers ---
+  private getPrecedence(op: string): number {
+    switch (op) {
+      case "||":
+        return 1;
+      case "&&":
+        return 2;
+      case "|":
+        return 3;
+      case "^":
+        return 4;
+      case "&":
+        return 5;
+      case "==":
+      case "!=":
+        return 6;
+      case "is":
+      case "as":
+        return 7;
+      case "<":
+      case "<=":
+      case ">":
+      case ">=":
+        return 8;
+      case "<<":
+      case ">>":
+        return 9;
+      case "+":
+      case "-":
+        return 10;
+      case "*":
+      case "/":
+      case "%":
+        return 11;
+      default:
+        return 0; // unknown or assignment handled elsewhere
+    }
+  }
+
+  private requiresParenForEqualPrecedence(
+    childOp: string,
+    parentOp: string,
+    isLeft: boolean,
+  ): boolean {
+    // For equal precedence but different operators, parentheses help preserve AST grouping
+    if (childOp !== parentOp) return true;
+    // For non-associative ops like comparisons and equality, parenthesize
+    const nonAssoc = ["==", "!=", "<", "<=", ">", ">="];
+    if (nonAssoc.includes(parentOp)) return true;
+    // For right side of left-associative ops, adding parens avoids re-grouping
+    if (!isLeft) {
+      const leftAssoc = ["|", "^", "&", "<<", ">>", "+", "-", "*", "/", "%"];
+      if (leftAssoc.includes(parentOp)) return true;
+    }
+    return false;
+  }
+
+  private parenthesizeBitwiseInsideComparison(
+    childOp: string,
+    parentOp: string,
+  ): boolean {
+    const comparisons = ["==", "!=", "<", "<=", ">", ">="];
+    const bitwise = ["|", "^", "&", "<<", ">>"];
+    return comparisons.includes(parentOp) && bitwise.includes(childOp);
+  }
+
+  private formatGenericParams(params: AST.GenericParam[]): string {
+    if (params.length === 0) return "";
+    return `<${params
+      .map((p) => {
+        if (p.constraint) {
+          return `${p.name}: ${this.formatType(p.constraint)}`;
+        }
+        return p.name;
+      })
+      .join(", ")}>`;
+  }
+}
