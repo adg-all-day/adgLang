@@ -88,3 +88,4 @@
 - tests: property-based tests for parser/printer roundtrip
 - fix: printer drops trailing comma in single-element tuples
 - formatter: 'adg fmt' with idempotent output
+- formatter: configurable line width and trailing commas
