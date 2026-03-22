@@ -89,3 +89,4 @@
 - fix: printer drops trailing comma in single-element tuples
 - formatter: 'adg fmt' with idempotent output
 - formatter: configurable line width and trailing commas
+- lsp: format-on-save support
