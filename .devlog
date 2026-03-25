@@ -90,3 +90,4 @@
 - formatter: 'adg fmt' with idempotent output
 - formatter: configurable line width and trailing commas
 - lsp: format-on-save support
+- compiler: emit source maps for stack traces
