@@ -92,3 +92,4 @@
 - lsp: format-on-save support
 - compiler: emit source maps for stack traces
 - runtime: human-readable backtraces with inlined frames
+- docs: write LANGUAGE_SPEC chapter on traits
