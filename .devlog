@@ -94,3 +94,4 @@
 - runtime: human-readable backtraces with inlined frames
 - docs: write LANGUAGE_SPEC chapter on traits
 - examples: add ray tracer demo
+- examples: tiny http server using stdlib net
