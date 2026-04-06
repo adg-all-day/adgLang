@@ -95,3 +95,4 @@
 - docs: write LANGUAGE_SPEC chapter on traits
 - examples: add ray tracer demo
 - examples: tiny http server using stdlib net
+- examples: brainfuck interpreter (~30 lines)
