@@ -96,3 +96,4 @@
 - examples: add ray tracer demo
 - examples: tiny http server using stdlib net
 - examples: brainfuck interpreter (~30 lines)
+- fix: integer overflow in benchmark harness timing
