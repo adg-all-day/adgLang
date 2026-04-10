@@ -97,3 +97,4 @@
 - examples: tiny http server using stdlib net
 - examples: brainfuck interpreter (~30 lines)
 - fix: integer overflow in benchmark harness timing
+- compiler: better diagnostics for missing semicolons
