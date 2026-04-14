@@ -99,3 +99,4 @@
 - fix: integer overflow in benchmark harness timing
 - compiler: better diagnostics for missing semicolons
 - compiler: suggest typo fixes via edit-distance
+- package manager: 'publish' with signature support
