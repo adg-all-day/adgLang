@@ -100,3 +100,4 @@
 - compiler: better diagnostics for missing semicolons
 - compiler: suggest typo fixes via edit-distance
 - package manager: 'publish' with signature support
+- package manager: download cache with content-addressed storage
