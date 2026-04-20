@@ -102,3 +102,4 @@
 - package manager: 'publish' with signature support
 - package manager: download cache with content-addressed storage
 - vscode-ext: inlay hints for inferred types
+- lsp: rename symbol across files
