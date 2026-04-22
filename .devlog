@@ -103,3 +103,4 @@
 - package manager: download cache with content-addressed storage
 - vscode-ext: inlay hints for inferred types
 - lsp: rename symbol across files
+- lsp: workspace symbol search
