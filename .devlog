@@ -104,3 +104,4 @@
 - vscode-ext: inlay hints for inferred types
 - lsp: rename symbol across files
 - lsp: workspace symbol search
+- fix: lsp leaks file handles on rapid open/close
