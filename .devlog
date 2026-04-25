@@ -105,3 +105,4 @@
 - lsp: rename symbol across files
 - lsp: workspace symbol search
 - fix: lsp leaks file handles on rapid open/close
+- vm: tiered jit compilation for hot functions
