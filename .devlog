@@ -108,3 +108,4 @@
 - vm: tiered jit compilation for hot functions
 - vm: deopt path back to interpreter on type mismatch
 - benchmark: regression tracking with json output
+- ci: run benchmarks on every release tag
