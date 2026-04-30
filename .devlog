@@ -110,3 +110,4 @@
 - benchmark: regression tracking with json output
 - ci: run benchmarks on every release tag
 - fix BUGS.md item #14: parser swallows trailing newline
+- fix BUGS.md item #19: gc misses weak refs in maps
