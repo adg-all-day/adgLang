@@ -112,3 +112,4 @@
 - fix BUGS.md item #14: parser swallows trailing newline
 - fix BUGS.md item #19: gc misses weak refs in maps
 - tests: add property tests for trait coherence
+- polish examples READMEs and add expected output
