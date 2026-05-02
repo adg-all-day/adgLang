@@ -114,3 +114,4 @@
 - tests: add property tests for trait coherence
 - polish examples READMEs and add expected output
 - docs: PACKAGE_MANAGER.md updates for lockfile v2
+- fix typo in error message ('expeted' -> 'expected')
