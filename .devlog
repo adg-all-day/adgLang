@@ -113,3 +113,4 @@
 - fix BUGS.md item #19: gc misses weak refs in maps
 - tests: add property tests for trait coherence
 - polish examples READMEs and add expected output
+- docs: PACKAGE_MANAGER.md updates for lockfile v2
