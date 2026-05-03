@@ -117,3 +117,4 @@
 - fix typo in error message ('expeted' -> 'expected')
 - TODO.md: cross off completed milestones, add q3 goals
 - ci: matrix build for linux/macos/windows on bun and node
+- compiler: warn on unused imports
