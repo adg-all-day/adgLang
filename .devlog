@@ -116,3 +116,4 @@
 - docs: PACKAGE_MANAGER.md updates for lockfile v2
 - fix typo in error message ('expeted' -> 'expected')
 - TODO.md: cross off completed milestones, add q3 goals
+- ci: matrix build for linux/macos/windows on bun and node
