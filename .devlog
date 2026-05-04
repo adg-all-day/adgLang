@@ -118,3 +118,4 @@
 - TODO.md: cross off completed milestones, add q3 goals
 - ci: matrix build for linux/macos/windows on bun and node
 - compiler: warn on unused imports
+- compiler: warn on unreachable code after return
