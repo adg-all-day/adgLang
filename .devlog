@@ -119,3 +119,4 @@
 - ci: matrix build for linux/macos/windows on bun and node
 - compiler: warn on unused imports
 - compiler: warn on unreachable code after return
+- stdlib: testing module with assert_eq, assert_throws
