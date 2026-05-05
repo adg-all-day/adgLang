@@ -1,0 +1,4 @@
+{
+  "expectedOutput": ["It is an integer wrapper", "It is a float wrapper"],
+  "exitCode": 0
+}

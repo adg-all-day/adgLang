@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["Status is active", "Status code: 1"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

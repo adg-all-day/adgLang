@@ -1,0 +1,7 @@
+{
+  "expectedOutput": ["opt1 is Some", "opt2 is not Some", "opt2 is None"],
+  "exitCode": 0,
+  "args": [],
+  "env": {},
+  "input": ""
+}

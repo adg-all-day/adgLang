@@ -1,0 +1,19 @@
+extern printf(fmt: string, ...);
+extern malloc(size: int) ret *void;
+extern memset(ptr: *void, value: int, size: int) ret *void;
+extern free(ptr: *void);
+
+frame main() ret int {
+    # Allocate 12 bytes and zero them
+    local ptr: *void = malloc(12);
+    memset(ptr, 0, 12);
+
+    # Cast to char* and test __adgLang_mem_is_zero
+    local _bytes: *int = cast<*int>(ptr);
+    local _result: int;
+
+    printf("Testing zeroed memory...\n");
+
+    free(ptr);
+    return 0;
+}

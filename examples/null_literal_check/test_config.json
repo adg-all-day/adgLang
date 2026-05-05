@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["Created struct p", "p == nullptr: false"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

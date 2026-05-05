@@ -1,0 +1,15 @@
+{
+  "expectedOutput": [
+    "=== Testing Generic Operator Overloading ===",
+    "c1.value = 10",
+    "c2.value = 15",
+    "c1 == c1: true",
+    "f1.value = 1.5",
+    "f2.value = 4.0",
+    "=== All tests passed! ==="
+  ],
+  "args": [],
+  "env": {},
+  "input": "",
+  "description": "Simple test for generic operator overloading with Container<T>"
+}

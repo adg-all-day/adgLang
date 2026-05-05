@@ -1,0 +1,17 @@
+{
+  "expectedOutput": [
+    "=== String Utils Demo ===",
+    "Includes 'World': Yes",
+    "Includes 'Python': No",
+    "Substring(0,5): Hello",
+    "Split Parts: 3",
+    "Part 0: Hello",
+    "Part 1: World",
+    "Part 2: ADGLANG",
+    "StartsWith 'Hello': Yes",
+    "EndsWith 'ADGLANG': Yes"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,4 @@
+{
+  "expectedOutput": ["Object is a: Dog", "Object is a: Cat"],
+  "exitCode": 0
+}

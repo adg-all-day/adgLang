@@ -1,0 +1,15 @@
+{
+  "expectedOutput": [
+    "--- Enum Test ---",
+    "Color is Red",
+    "Color is Green",
+    "Message: Quit",
+    "Message: Move to (10, 20)",
+    "Message: Write 'Hello ADGLANG'",
+    "Option: Some(42)",
+    "Option: None"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,13 @@
+{
+  "expectedOutput": [
+    "=== Nullptr Return Values Test ===",
+    "",
+    "Test 1: Returning nullptr from function",
+    "Test 2: Using returned nullptr value",
+    "Caught: Attempted to access member of nullptr in processData (expr: d.value)",
+    "Test completed successfully"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["prefix: 1", "postfix: 2", "mixed: 3, 4"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

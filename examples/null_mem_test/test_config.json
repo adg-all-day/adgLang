@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["Testing zeroed memory..."],
+  "args": [],
+  "env": {},
+  "input": ""
+}

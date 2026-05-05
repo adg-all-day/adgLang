@@ -1,0 +1,18 @@
+{
+  "expectedOutput": [
+    "Testing push with << operator:",
+    "Array length after pushes: 3",
+    "Elements: 10, 20, 30",
+    "",
+    "Testing pop with >> operator:",
+    "Popped value: 30",
+    "Array length after pop: 2",
+    "Popped value: 20",
+    "Array length after pop: 1",
+    "",
+    "=== Array operator test passed! ==="
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

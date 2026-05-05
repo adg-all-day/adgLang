@@ -1,0 +1,20 @@
+import [Array] from "std/array.adg";
+import [Algorithm] from "std/algorithm.adg";
+import [IO] from "std/io.adg";
+
+frame main() ret int {
+    IO.log("=== Algorithm Demo ===");
+    local arr: Array<int> = Array<int>.new(5);
+    arr.push(5);
+    arr.push(1);
+    arr.push(4);
+    arr.push(2);
+    arr.push(3);
+    Algorithm.reverse(&arr);
+    IO.printInt(arr.get(0));
+    Algorithm.sortAsc(&arr);
+    IO.printInt(arr.get(0));
+    IO.printInt(Algorithm.binarySearch(&arr, 4));
+    IO.printInt(Algorithm.binarySearch(&arr, 9));
+    return 0;
+}

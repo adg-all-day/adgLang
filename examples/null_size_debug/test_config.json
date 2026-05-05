@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["sizeof(P): 8", "p == nullptr: true"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

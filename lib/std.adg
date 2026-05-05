@@ -1,0 +1,174 @@
+# ADGLANG Standard Library
+# This module re-exports all standard library components for easy access.
+
+# Core Type System
+import [Type], [Any] from "std/type.adg";
+export [Type];
+export [Any];
+
+# Specs / Interfaces
+import [Comparable], [Equatable], [Destructible], [Cloneable] from "std/core_specs.adg";
+import [Iterator], [Iterable] from "std/iter_specs.adg";
+
+export [Comparable];
+export [Equatable];
+export [Destructible];
+export [Cloneable];
+export [Iterator];
+export [Iterable];
+
+import [Int], [Double], [Bool], [Long], [Char], [UChar], [Short], [UShort], [UInt], [ULong] from "std/primitives.adg";
+export [Int];
+export [Bool];
+export [Double];
+export [Long];
+export [Char];
+export [UChar];
+export [Short];
+export [UShort];
+export [UInt];
+export [ULong];
+
+import [OptionUnwrapError], [ResultUnwrapError], [IOError], [CastError], [IndexOutOfBoundsError], [EmptyError], [NullAccessError], [DivisionByZeroError], [StackOverflowError] from "std/errors.adg";
+export [OptionUnwrapError];
+export [ResultUnwrapError];
+export [IOError];
+export [CastError];
+export [IndexOutOfBoundsError];
+export [EmptyError];
+export [NullAccessError];
+export [DivisionByZeroError];
+export [StackOverflowError];
+
+# Data Structures
+import [Array] from "std/array.adg";
+export [Array];
+
+import [Map] from "std/map.adg";
+export [Map];
+
+import [String] from "std/string.adg";
+export [String];
+
+import [Stack] from "std/stack.adg";
+export [Stack];
+
+import [Queue] from "std/queue.adg";
+export [Queue];
+
+import [Set] from "std/set.adg";
+export [Set];
+
+import [LinkedList], [ListNode] from "std/linked_list.adg";
+export [LinkedList];
+export [ListNode];
+
+import [PriorityQueue] from "std/priority_queue.adg";
+export [PriorityQueue];
+
+import [likely], [unlikely], [prefetch], [trap], [debugtrap] from "std/intrinsics.adg";
+export [likely];
+export [unlikely];
+export [prefetch];
+export [trap];
+export [debugtrap];
+
+import [Option] from "std/option.adg";
+export [Option];
+
+import [Result] from "std/result.adg";
+export [Result];
+
+import [Vec2] from "std/vec2.adg";
+export [Vec2];
+
+import [Vec3] from "std/vec3.adg";
+export [Vec3];
+
+# Utilities
+import [IO] from "std/io.adg";
+export [IO];
+
+import [FS] from "std/fs.adg";
+export [FS];
+
+import [Path] from "std/path.adg";
+export [Path];
+
+import [Math] from "std/math.adg";
+import {PI}, {E}, {TAU}, {SQRT2}, {LN2}, {LN10} from "std/math.adg";
+export [Math];
+export {PI};
+export {E};
+export {TAU};
+export {SQRT2};
+export {LN2};
+export {LN10};
+
+import [Rand] from "std/rand.adg";
+export [Rand];
+
+import [Time], [Duration], [Stopwatch] from "std/time.adg";
+export [Time];
+export [Duration];
+export [Stopwatch];
+
+import [Assert] from "std/assert.adg";
+export [Assert];
+
+# Algorithms
+import [Algorithm] from "std/algorithm.adg";
+export [Algorithm];
+
+# UTF-8 Utilities
+import [UTF8] from "std/utf8.adg";
+export [UTF8];
+
+# Character Utilities
+import [CharUtils] from "std/char_utils.adg";
+export [CharUtils];
+
+# Additional Utilities
+import [Range] from "std/range.adg";
+export [Range];
+
+import [StringBuilder] from "std/string_builder.adg";
+export [StringBuilder];
+
+import exec, execStatus, execOutput, execShell, execSilent, sleep, [ProcessResult] from "std/process.adg";
+export exec;
+export execStatus;
+export execOutput;
+export execShell;
+export execSilent;
+export sleep;
+export [ProcessResult];
+
+# New Utilities
+import [BitSet] from "std/bitset.adg";
+export [BitSet];
+
+import [Base64] from "std/base64.adg";
+export [Base64];
+
+import [Hex] from "std/hex.adg";
+export [Hex];
+
+import [UUID] from "std/uuid.adg";
+export [UUID];
+
+import [Stats] from "std/stats.adg";
+export [Stats];
+
+import [Complex] from "std/complex.adg";
+export [Complex];
+
+import [Rational] from "std/rational.adg";
+export [Rational];
+
+import [Env] from "std/env.adg";
+export [Env];
+
+import [Date], [DateTime] from "std/date.adg";
+export [Date];
+export [DateTime];

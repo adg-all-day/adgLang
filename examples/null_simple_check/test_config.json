@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["p is nullptr"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,15 @@
+{
+  "expectedOutput": [
+    "=== Path Demo ===",
+    "Joined: /home/user/file.txt",
+    "Basename: file.txt",
+    "Dirname: /home/user",
+    "Normalize: /home/user/docs",
+    "IsAbsolute(/home): true",
+    "IsAbsolute(rel/path): false",
+    "Resolve: /base/target"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

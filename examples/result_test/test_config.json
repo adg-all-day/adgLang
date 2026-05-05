@@ -1,0 +1,13 @@
+{
+  "expectedOutput": [
+    "ok is Ok: 42",
+    "err is Err: Something went wrong",
+    "unwrapOr works for Ok",
+    "unwrapOr works for Err",
+    "Equality works",
+    "Inequality works"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

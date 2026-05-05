@@ -1,0 +1,16 @@
+{
+  "expectedOutput": [
+    "Doubled: 2 4 6 8 10 ",
+    "Evens: 2 4 ",
+    "Sum: 15",
+    "Found > 3: 4",
+    "All positive: true",
+    "Any > 10: false",
+    "Index of 3: 2",
+    "Contains 5: true",
+    "Found index > 3: 3"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

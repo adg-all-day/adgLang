@@ -1,0 +1,13 @@
+{
+  "expectedOutput": [
+    "a: 10",
+    "p.x: 1",
+    "mut_p.x: 30",
+    "ptr.x: 40",
+    "c_ptr.x: 50",
+    "x: 1, y: 2"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

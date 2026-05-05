@@ -1,0 +1,9 @@
+{
+  "expectedOutput": [
+    "p == nullptr: true 1 1",
+    "q == nullptr after init: false 1 0"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

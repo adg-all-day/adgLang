@@ -1,0 +1,12 @@
+{
+  "expectedOutput": [
+    "Sum: 60",
+    "Hello ",
+    "Variadic ",
+    "Functions!",
+    "Hello Variadic Functions!"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,21 @@
+{
+  "expectedOutput": [
+    "Test 1: Zero-valued struct",
+    "p1.x = 0, p1.y = 0",
+    "",
+    "Test 2: Normal struct",
+    "p2.x = 10, p2.y = 20",
+    "",
+    "Test 3: Nullptr struct (should trap)",
+    "About to access p3.x...",
+    "Caught: Attempted to access member of nullptr in main (expr: p3.x)",
+    "",
+    "Test 4: Nullptr array access",
+    "Caught: Attempted to access member of nullptr (expr: arr[...])",
+    "",
+    "All tests passed!"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

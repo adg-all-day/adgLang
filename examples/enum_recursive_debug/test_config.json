@@ -1,0 +1,14 @@
+{
+  "expectedOutput": [
+    "Creating Nil node",
+    "Created node3 (Nil)",
+    "Creating Cons(3, node3)",
+    "Created node2 (Cons(3, node3))",
+    "Testing pattern match",
+    "Result: 3"
+  ],
+  "exitCode": 3,
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,19 @@
+{
+  "expectedOutput": [
+    "Original Config:",
+    "  ID: 101",
+    "  User: adgLang_user",
+    "Serialized JSON:",
+    "{\"id\": 101, \"username\": \"adgLang_user\", \"active\": true}",
+    "Successfully wrote to file: tmp/config.json",
+    "Read JSON from file:",
+    "{\"id\": 101, \"username\": \"adgLang_user\", \"active\": true}",
+    "Restored Config:",
+    "  ID: 101",
+    "  User: adgLang_user",
+    "  Active: true"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

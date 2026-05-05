@@ -1,0 +1,9 @@
+{
+  "expectedOutput": [
+    "Value is an int",
+    "Value is a float",
+    "Value is something else",
+    "Value is a Point"
+  ],
+  "exitCode": 0
+}

@@ -1,0 +1,7 @@
+{
+  "expectedOutput": ["42: positive", "-5: negative", "0: zero", "None: none"],
+  "exitCode": 0,
+  "args": [],
+  "env": {},
+  "input": ""
+}

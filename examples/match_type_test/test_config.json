@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["Is Some", "Is not None"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

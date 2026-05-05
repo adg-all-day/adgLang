@@ -1,0 +1,8 @@
+{
+  "expectedOutput": [
+    "Int: 30",
+    "Double: 4.000000",
+    "Calc Int: 150",
+    "Calc Double: 150.500000"
+  ]
+}

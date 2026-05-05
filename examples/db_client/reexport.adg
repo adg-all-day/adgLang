@@ -1,0 +1,2 @@
+import foo from "./local_lib.adg";
+export foo;

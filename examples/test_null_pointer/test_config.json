@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["Caught: Attempted to access member of nullptr"],
+  "args": [],
+  "env": {},
+  "input": ""
+}

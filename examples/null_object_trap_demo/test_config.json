@@ -1,0 +1,10 @@
+{
+  "expectedOutput": [
+    "Testing nullptr object access trap...",
+    "Attempting to access p.x on nullptr object:"
+  ],
+  "args": [],
+  "env": {},
+  "input": "",
+  "exitCode": 1
+}

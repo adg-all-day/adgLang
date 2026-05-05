@@ -1,0 +1,8 @@
+{
+  "expectedOutput": [],
+  "exitCode": 1,
+  "args": [],
+  "env": {},
+  "input": "",
+  "description": "Requires 'math-utils' package to be installed - package import test"
+}

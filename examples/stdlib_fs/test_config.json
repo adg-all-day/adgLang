@@ -1,0 +1,11 @@
+{
+  "expectedOutput": [
+    "=== FS Demo ===",
+    "Write: Success",
+    "Exists: Yes",
+    "Content: Hello ADGLANG Filesystem!"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

@@ -1,0 +1,21 @@
+{
+  "expectedOutput": [
+    "Testing assignment...",
+    "Assignment OK",
+    "Testing match...",
+    "Match Some: 15",
+    "Testing match...",
+    "Match None",
+    "Testing match<Type>...",
+    "Is Some",
+    "Testing equality...",
+    "Equality OK",
+    "Testing call and return...",
+    "Call/Return OK",
+    "Testing nested...",
+    "Nested value: 40"
+  ],
+  "args": [],
+  "env": {},
+  "input": ""
+}

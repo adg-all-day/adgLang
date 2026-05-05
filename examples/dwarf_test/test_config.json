@@ -1,0 +1,6 @@
+{
+  "expectedOutput": ["Hello, DWARF!"],
+  "args": ["--dwarf"],
+  "env": {},
+  "input": ""
+}
