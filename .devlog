@@ -121,3 +121,4 @@
 - compiler: warn on unreachable code after return
 - stdlib: testing module with assert_eq, assert_throws
 - stdlib: collections — ordered map and set
+- bump version to v0.4.0 and refresh CHANGELOG
